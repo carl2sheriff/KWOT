@@ -64,6 +64,8 @@ export const GET = withApiMiddleware(async (req: NextRequest) => {
       include: {
         client: { select: { id: true, name: true, company: true } },
         createdBy: { select: { id: true, name: true } },
+        seller: { select: { id: true, name: true } },
+        salesBu: { select: { id: true, name: true, code: true } },
         _count: { select: { items: true, payments: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -88,6 +90,10 @@ export const POST = withApiMiddleware(async (req: NextRequest) => {
   }
 
   const data = validation.data
+
+  // Extract optional revenue attribution fields (not in schema, validated manually)
+  const sellerId = body.sellerId && typeof body.sellerId === 'string' ? body.sellerId : null
+  const salesBuId = body.salesBuId && typeof body.salesBuId === 'string' ? body.salesBuId : null
 
   // Generate reference
   const reference = await generateReference('invoice')
@@ -114,6 +120,8 @@ export const POST = withApiMiddleware(async (req: NextRequest) => {
         clientId: data.clientId,
         projectId: data.projectId || null,
         createdById: TEMP_USER_ID,
+        sellerId,
+        salesBuId,
         status: 'DRAFT',
         dueDate: data.dueDate,
         subtotal: totals.subtotal,
@@ -126,23 +134,38 @@ export const POST = withApiMiddleware(async (req: NextRequest) => {
         notes: data.notes || null,
         terms: data.terms || null,
         items: {
-          create: data.items.map((item, index) => ({
-            productId: item.productId || null,
-            description: item.description,
-            section: item.section || null,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            discount: item.discount || 0,
-            taxRate: item.taxRate ?? data.taxRate ?? 20,
-            total: calculateItemTotal(item.quantity, item.unitPrice, item.discount || 0),
-            position: index + 1,
-          })),
+          create: data.items.map((item, index) => {
+            // Extract productiveBuId from the raw body items (not in schema)
+            const rawItem = body.items?.[index]
+            const productiveBuId = rawItem?.productiveBuId && typeof rawItem.productiveBuId === 'string'
+              ? rawItem.productiveBuId
+              : null
+
+            return {
+              productId: item.productId || null,
+              description: item.description,
+              section: item.section || null,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              discount: item.discount || 0,
+              taxRate: item.taxRate ?? data.taxRate ?? 20,
+              total: calculateItemTotal(item.quantity, item.unitPrice, item.discount || 0),
+              productiveBuId,
+              position: index + 1,
+            }
+          }),
         },
       },
       include: {
         client: { select: { id: true, name: true, company: true } },
         createdBy: { select: { id: true, name: true } },
-        items: true,
+        seller: { select: { id: true, name: true } },
+        salesBu: { select: { id: true, name: true, code: true } },
+        items: {
+          include: {
+            productiveBu: { select: { id: true, name: true, code: true } },
+          },
+        },
       },
     })
 

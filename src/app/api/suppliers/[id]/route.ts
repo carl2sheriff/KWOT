@@ -22,7 +22,20 @@ export const GET = withApiMiddleware(async (_req, context) => {
         orderBy: { createdAt: 'desc' },
         take: 10,
       },
-      _count: { select: { purchaseOrders: true } },
+      supplierInvoices: {
+        select: {
+          id: true,
+          reference: true,
+          status: true,
+          amount: true,
+          fileName: true,
+          submittedAt: true,
+          purchaseOrder: { select: { id: true, reference: true } },
+        },
+        orderBy: { submittedAt: 'desc' },
+        take: 10,
+      },
+      _count: { select: { purchaseOrders: true, supplierInvoices: true } },
     },
   })
 

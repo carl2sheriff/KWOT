@@ -75,6 +75,18 @@ export const POST = withApiMiddleware(async (
   const settings = await prisma.companySettings.findFirst()
   const paymentTerms = settings?.defaultPaymentTerms ?? 30
 
+  // Auto-populate salesBuId from the project's buId if available
+  let salesBuId: string | null = null
+  if (quote.projectId) {
+    const project = await prisma.project.findUnique({
+      where: { id: quote.projectId },
+      select: { buId: true },
+    })
+    if (project?.buId) {
+      salesBuId = project.buId
+    }
+  }
+
   // Calculate due date
   const dueDate = new Date()
   dueDate.setDate(dueDate.getDate() + paymentTerms)
@@ -88,6 +100,7 @@ export const POST = withApiMiddleware(async (
         clientId: quote.clientId,
         projectId: quote.projectId,
         createdById: TEMP_USER_ID,
+        salesBuId,
         status: 'DRAFT',
         situationNumber,
         situationTotal,

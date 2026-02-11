@@ -23,6 +23,20 @@ interface ProjectOption {
   name: string;
 }
 
+interface UserOption {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface BusinessUnitOption {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+}
+
 // ============================================
 // Calculation Helpers
 // ============================================
@@ -78,6 +92,8 @@ export default function NouvelleFacturePage() {
   const [taxRate, setTaxRate] = useState(20);
   const [discount, setDiscount] = useState(0);
   const [notes, setNotes] = useState("");
+  const [sellerId, setSellerId] = useState("");
+  const [salesBuId, setSalesBuId] = useState("");
   const [items, setItems] = useState<LineItem[]>([
     {
       description: "",
@@ -93,15 +109,31 @@ export default function NouvelleFacturePage() {
   // Data state
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnitOption[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Fetch clients
+  // Fetch clients, users, and business units
   useEffect(() => {
     fetch("/api/clients?limit=100")
       .then((res) => res.json())
       .then((json) => {
         if (json.success) setClients(json.data);
+      })
+      .catch(console.error);
+
+    fetch("/api/users")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setUsers(json.data);
+      })
+      .catch(console.error);
+
+    fetch("/api/business-units")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setBusinessUnits(json.data.filter((bu: BusinessUnitOption) => bu.isActive));
       })
       .catch(console.error);
   }, []);
@@ -155,6 +187,8 @@ export default function NouvelleFacturePage() {
           discount,
           clientPONumber: clientPONumber || null,
           notes: notes || undefined,
+          sellerId: sellerId || undefined,
+          salesBuId: salesBuId || undefined,
           items: items
             .filter((i) => i.description)
             .map((item) => ({
@@ -315,6 +349,44 @@ export default function NouvelleFacturePage() {
               placeholder="Ex: PO-2026-001"
               className="w-full px-3 py-2 text-[13px] border border-[#E5E5E5] rounded-[10px] outline-none focus:border-[#3C01FC] transition-colors"
             />
+          </div>
+
+          {/* Seller */}
+          <div>
+            <label className="block text-[10px] font-bold tracking-[0.15em] uppercase text-[#999] mb-1.5">
+              VENDEUR
+            </label>
+            <select
+              value={sellerId}
+              onChange={(e) => setSellerId(e.target.value)}
+              className="w-full px-3 py-2 text-[13px] border border-[#E5E5E5] rounded-[10px] outline-none focus:border-[#3C01FC] transition-colors bg-white"
+            >
+              <option value="">AUCUN VENDEUR</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* BU Vente */}
+          <div>
+            <label className="block text-[10px] font-bold tracking-[0.15em] uppercase text-[#999] mb-1.5">
+              BU VENTE
+            </label>
+            <select
+              value={salesBuId}
+              onChange={(e) => setSalesBuId(e.target.value)}
+              className="w-full px-3 py-2 text-[13px] border border-[#E5E5E5] rounded-[10px] outline-none focus:border-[#3C01FC] transition-colors bg-white"
+            >
+              <option value="">AUCUNE BU</option>
+              {businessUnits.map((bu) => (
+                <option key={bu.id} value={bu.id}>
+                  {bu.name} ({bu.code})
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

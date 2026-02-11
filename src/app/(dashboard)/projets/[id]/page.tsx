@@ -27,6 +27,7 @@ import { StatusBadge } from "@/components/financial/StatusBadge";
 import { Loading } from "@/components/ui/Loading";
 import { ActivityTimeline, TimelineEvent } from "@/components/ui/ActivityTimeline";
 import { formatDate } from "@/lib/format";
+import RevenueAllocation from "./revenue-allocation";
 
 interface ProjectDetail {
   id: string;
@@ -416,6 +417,13 @@ export default function ProjetDetailPage() {
               emptyMessage="Aucune activite enregistree sur ce projet"
             />
           </div>
+
+          {/* Revenue Allocation */}
+          <RevenueAllocation
+            projectId={projectId}
+            startDate={project.startDate}
+            endDate={project.endDate}
+          />
         </div>
       </div>
     </div>

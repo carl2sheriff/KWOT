@@ -38,6 +38,18 @@ export const POST = withApiMiddleware(async (
   const settings = await prisma.companySettings.findFirst()
   const paymentTerms = settings?.defaultPaymentTerms ?? 30
 
+  // Auto-populate salesBuId from the project's buId if available
+  let salesBuId: string | null = null
+  if (existing.projectId) {
+    const project = await prisma.project.findUnique({
+      where: { id: existing.projectId },
+      select: { buId: true },
+    })
+    if (project?.buId) {
+      salesBuId = project.buId
+    }
+  }
+
   // Generate invoice reference
   const invoiceReference = await generateReference('invoice')
 
@@ -54,6 +66,7 @@ export const POST = withApiMiddleware(async (
         clientId: existing.clientId,
         projectId: existing.projectId,
         createdById: TEMP_USER_ID,
+        salesBuId,
         status: 'DRAFT',
         dueDate,
         subtotal: existing.subtotal,

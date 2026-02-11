@@ -13,6 +13,11 @@ import {
   Send,
   CheckCircle,
   PackageCheck,
+  Link2,
+  Copy,
+  RefreshCw,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 
 // ============================================
@@ -117,6 +122,10 @@ export default function PurchaseOrderDetailPage() {
   const [po, setPo] = useState<PurchaseOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [accessTokenExpires, setAccessTokenExpires] = useState<string | null>(null);
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchPO = useCallback(async () => {
     try {
@@ -140,6 +149,63 @@ export default function PurchaseOrderDetailPage() {
   useEffect(() => {
     fetchPO();
   }, [fetchPO]);
+
+  // Fetch supplier access token when PO is loaded
+  useEffect(() => {
+    if (!po?.supplier?.id) return;
+    fetch(`/api/suppliers/${po.supplier.id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data.accessToken) {
+          setAccessToken(json.data.accessToken);
+          setAccessTokenExpires(json.data.accessTokenExpiresAt || null);
+        }
+      })
+      .catch(() => {});
+  }, [po?.supplier?.id]);
+
+  const generateAccessToken = async () => {
+    if (!po) return;
+    setGeneratingToken(true);
+    try {
+      const res = await fetch(`/api/suppliers/${po.supplier.id}/access-token`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        setAccessToken(json.data.accessToken);
+        setAccessTokenExpires(json.data.accessTokenExpiresAt);
+        toast.success("LIEN D'ACCES GENERE");
+      } else {
+        toast.error(json.error || "ERREUR");
+      }
+    } catch {
+      toast.error("ERREUR RESEAU");
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
+
+  const revokeAccessToken = async () => {
+    if (!po) return;
+    try {
+      const res = await fetch(`/api/suppliers/${po.supplier.id}/access-token`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        setAccessToken(null);
+        setAccessTokenExpires(null);
+        toast.success("ACCES REVOQUE");
+      }
+    } catch {
+      toast.error("ERREUR RESEAU");
+    }
+  };
+
+  const copyExtranetLink = () => {
+    if (!accessToken) return;
+    const url = `${window.location.origin}/extranet/${accessToken}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Status actions
   const updateStatus = async (newStatus: string) => {
@@ -353,6 +419,88 @@ export default function PurchaseOrderDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Extranet Fournisseur */}
+          <div className="bg-surface-raised border border-zinc-800/50 rounded-[12px] p-6 mb-6">
+            <h2 className="text-[13px] font-bold tracking-[0.1em] uppercase mb-4 flex items-center gap-2 text-zinc-200">
+              <Link2 size={14} className="text-accent" />
+              EXTRANET FOURNISSEUR
+            </h2>
+
+            {accessToken ? (
+              <div className="space-y-3">
+                <div className="bg-surface border border-zinc-800 rounded-lg px-4 py-3">
+                  <p className="text-2xs text-zinc-500 mb-1">Lien d&apos;acces au portail fournisseur</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs text-accent flex-1 truncate">
+                      {`${typeof window !== 'undefined' ? window.location.origin : ''}/extranet/${accessToken}`}
+                    </code>
+                    <button
+                      onClick={copyExtranetLink}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent text-2xs font-medium rounded-md transition-colors"
+                    >
+                      <Copy size={12} />
+                      {copied ? "Copie !" : "Copier"}
+                    </button>
+                    <a
+                      href={`/extranet/${accessToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-2xs font-medium rounded-md transition-colors"
+                    >
+                      <ExternalLink size={12} />
+                      Ouvrir
+                    </a>
+                  </div>
+                </div>
+                {accessTokenExpires && (
+                  <p className="text-2xs text-zinc-600">
+                    Expire le {new Date(accessTokenExpires).toLocaleDateString("fr-FR")}
+                  </p>
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={generateAccessToken}
+                    disabled={generatingToken}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-2xs font-medium rounded-md transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={generatingToken ? "animate-spin" : ""} />
+                    Regenerer
+                  </button>
+                  <button
+                    onClick={revokeAccessToken}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-danger/10 hover:bg-danger/20 text-danger text-2xs font-medium rounded-md transition-colors"
+                  >
+                    <Trash2 size={12} />
+                    Revoquer
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-xs text-zinc-500 mb-3">
+                  Generez un lien pour permettre au fournisseur de telecharger ses BDC et deposer ses factures.
+                </p>
+                <button
+                  onClick={generateAccessToken}
+                  disabled={generatingToken}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-white text-xs font-medium rounded-lg transition-colors mx-auto disabled:opacity-50"
+                >
+                  {generatingToken ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      Generation...
+                    </>
+                  ) : (
+                    <>
+                      <Link2 size={14} />
+                      Generer un lien d&apos;acces
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Line Items Table */}

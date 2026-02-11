@@ -19,9 +19,12 @@ export const GET = withApiMiddleware(async (_req, context) => {
       client: { select: { id: true, name: true, company: true, email: true } },
       project: { select: { id: true, name: true } },
       createdBy: { select: { id: true, name: true } },
+      seller: { select: { id: true, name: true } },
+      salesBu: { select: { id: true, name: true, code: true } },
       items: {
         include: {
           product: { select: { id: true, name: true, sku: true } },
+          productiveBu: { select: { id: true, name: true, code: true } },
         },
         orderBy: { position: 'asc' },
       },
@@ -74,6 +77,10 @@ export const PUT = withApiMiddleware(async (req, context) => {
 
   const data = validation.data
 
+  // Extract optional revenue attribution fields (not in schema, validated manually)
+  const sellerId = body.sellerId !== undefined ? (body.sellerId || null) : undefined
+  const salesBuId = body.salesBuId !== undefined ? (body.salesBuId || null) : undefined
+
   // Calculate new totals if items are provided
   let totals = undefined
   if (data.items) {
@@ -106,6 +113,8 @@ export const PUT = withApiMiddleware(async (req, context) => {
         ...(data.discount !== undefined && { discount: data.discount }),
         ...(data.notes !== undefined && { notes: data.notes || null }),
         ...(data.terms !== undefined && { terms: data.terms || null }),
+        ...(sellerId !== undefined && { sellerId }),
+        ...(salesBuId !== undefined && { salesBuId }),
         ...(totals && {
           subtotal: totals.subtotal,
           taxAmount: totals.taxAmount,
@@ -114,23 +123,38 @@ export const PUT = withApiMiddleware(async (req, context) => {
         }),
         ...(data.items && {
           items: {
-            create: data.items.map((item, index) => ({
-              productId: item.productId || null,
-              description: item.description!,
-              quantity: item.quantity!,
-              unitPrice: item.unitPrice!,
-              discount: item.discount || 0,
-              taxRate: item.taxRate ?? data.taxRate ?? 20,
-              total: calculateItemTotal(item.quantity!, item.unitPrice!, item.discount || 0),
-              position: index + 1,
-            })),
+            create: data.items.map((item, index) => {
+              // Extract productiveBuId from the raw body items (not in schema)
+              const rawItem = body.items?.[index]
+              const productiveBuId = rawItem?.productiveBuId && typeof rawItem.productiveBuId === 'string'
+                ? rawItem.productiveBuId
+                : null
+
+              return {
+                productId: item.productId || null,
+                description: item.description!,
+                quantity: item.quantity!,
+                unitPrice: item.unitPrice!,
+                discount: item.discount || 0,
+                taxRate: item.taxRate ?? data.taxRate ?? 20,
+                total: calculateItemTotal(item.quantity!, item.unitPrice!, item.discount || 0),
+                productiveBuId,
+                position: index + 1,
+              }
+            }),
           },
         }),
       },
       include: {
         client: { select: { id: true, name: true, company: true } },
         createdBy: { select: { id: true, name: true } },
-        items: true,
+        seller: { select: { id: true, name: true } },
+        salesBu: { select: { id: true, name: true, code: true } },
+        items: {
+          include: {
+            productiveBu: { select: { id: true, name: true, code: true } },
+          },
+        },
       },
     })
 

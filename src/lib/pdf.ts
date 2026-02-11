@@ -358,3 +358,125 @@ export function generateInvoicePDF(invoice: InvoicePDFData, company: CompanyInfo
 
   return new Uint8Array(doc.output('arraybuffer'))
 }
+
+interface POPDFItem {
+  description: string
+  quantity: number
+  unitPrice: number
+  total: number
+}
+
+interface SupplierInfo {
+  name: string
+  company?: string | null
+  email?: string | null
+  address?: string | null
+}
+
+interface POPDFData {
+  reference: string
+  status: string
+  orderDate: string
+  expectedDelivery: string | null
+  subtotal: number
+  taxRate: number
+  taxAmount: number
+  total: number
+  notes: string | null
+  supplier: SupplierInfo
+  project: { id: string; name: string } | null
+  items: POPDFItem[]
+}
+
+export function generatePurchaseOrderPDF(po: POPDFData, company: CompanyInfo): Uint8Array {
+  const doc = new jsPDF()
+
+  let y = addHeader(doc, company, 'BON DE COMMANDE', po.reference)
+
+  const meta: { label: string; value: string }[] = [
+    { label: 'Date', value: formatDateFR(po.orderDate) },
+  ]
+  if (po.expectedDelivery) meta.push({ label: 'Livraison prevue', value: formatDateFR(po.expectedDelivery) })
+  if (po.project) meta.push({ label: 'Projet', value: po.project.name })
+
+  // Supplier block (instead of client block)
+  y += 10
+  doc.setFontSize(8)
+  for (const m of meta) {
+    doc.setFont('helvetica', 'bold')
+    doc.text(`${m.label}:`, 20, y)
+    doc.setFont('helvetica', 'normal')
+    doc.text(m.value, 55, y)
+    y += 5
+  }
+
+  // Supplier box (right side)
+  const supplierY = y - (meta.length * 5)
+  doc.setFillColor(245, 245, 245)
+  doc.roundedRect(120, supplierY - 5, 70, 30, 2, 2, 'F')
+
+  doc.setFontSize(7)
+  doc.setFont('helvetica', 'bold')
+  doc.text('FOURNISSEUR', 125, supplierY)
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.text(po.supplier.name, 125, supplierY + 6)
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  let sy = supplierY + 11
+  if (po.supplier.company) { doc.text(po.supplier.company, 125, sy); sy += 4 }
+  if (po.supplier.address) { doc.text(po.supplier.address, 125, sy); sy += 4 }
+  if (po.supplier.email) { doc.text(po.supplier.email, 125, sy); sy += 4 }
+
+  y = Math.max(y, supplierY + 35) + 5
+
+  // Items table (simplified - no discount/tax per item for POs)
+  const rows: (string | number)[][] = po.items.map(item => [
+    item.description,
+    item.quantity.toFixed(2),
+    formatCurrency(item.unitPrice),
+    formatCurrency(item.total),
+  ])
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Description', 'Qte', 'Prix unit. HT', 'Total HT']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [60, 1, 252], fontSize: 8, font: 'helvetica' },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      0: { cellWidth: 85 },
+      1: { cellWidth: 25, halign: 'right' },
+      2: { cellWidth: 35, halign: 'right' },
+      3: { cellWidth: 35, halign: 'right' },
+    },
+    margin: { left: 20, right: 20 },
+  })
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  y = (doc as any).lastAutoTable.finalY as number
+
+  y = addTotals(doc, y, { subtotal: po.subtotal, discount: 0, taxAmount: po.taxAmount, total: po.total })
+
+  // Notes
+  if (po.notes) {
+    y += 10
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Notes:', 20, y)
+    doc.setFont('helvetica', 'normal')
+    const lines = doc.splitTextToSize(po.notes, 170)
+    doc.text(lines, 20, y + 5)
+  }
+
+  // Footer
+  doc.setFontSize(7)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(150)
+  doc.text(`${company.companyName} - Bon de commande`, 105, 285, { align: 'center' })
+
+  return new Uint8Array(doc.output('arraybuffer'))
+}

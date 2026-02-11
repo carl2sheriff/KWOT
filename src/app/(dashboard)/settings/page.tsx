@@ -5,7 +5,7 @@ import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { Loading } from "@/components/ui/Loading";
-import { Save, Building2, Calculator, FileText, Hash, Scale, Landmark, ScrollText, RefreshCw, CheckCircle2, XCircle, Plug } from "lucide-react";
+import { Save, Building2, Calculator, FileText, Hash, Scale, Landmark, ScrollText, RefreshCw, CheckCircle2, XCircle, Plug, Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 
 interface CompanySettings {
   id: string;
@@ -47,11 +47,30 @@ interface CompanySettings {
   acLastSyncAt: string | null;
 }
 
+interface BusinessUnit {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  _count?: { invoicesSales?: number; invoiceItemsProductive?: number };
+}
+
 export default function SettingsPage() {
   const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Business Units
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [buLoading, setBuLoading] = useState(true);
+  const [showBuForm, setShowBuForm] = useState(false);
+  const [buFormName, setBuFormName] = useState("");
+  const [buFormCode, setBuFormCode] = useState("");
+  const [buSaving, setBuSaving] = useState(false);
+  const [editingBuId, setEditingBuId] = useState<string | null>(null);
+  const [editBuName, setEditBuName] = useState("");
+  const [editBuCode, setEditBuCode] = useState("");
 
   const [companyName, setCompanyName] = useState("");
   const [legalForm, setLegalForm] = useState("");
@@ -156,6 +175,111 @@ export default function SettingsPage() {
     fetchSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch Business Units
+  const fetchBusinessUnits = React.useCallback(async () => {
+    setBuLoading(true);
+    try {
+      const res = await fetch("/api/business-units");
+      const json = await res.json();
+      if (json.success) {
+        setBusinessUnits(json.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch business units:", err);
+    } finally {
+      setBuLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBusinessUnits();
+  }, [fetchBusinessUnits]);
+
+  const handleCreateBU = async () => {
+    if (!buFormName.trim() || !buFormCode.trim()) return;
+    setBuSaving(true);
+    try {
+      const res = await fetch("/api/business-units", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: buFormName.trim(), code: buFormCode.trim().toUpperCase() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("Business Unit creee");
+        setBuFormName("");
+        setBuFormCode("");
+        setShowBuForm(false);
+        fetchBusinessUnits();
+      } else {
+        toast.error(json.error || "Erreur lors de la creation");
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    } finally {
+      setBuSaving(false);
+    }
+  };
+
+  const handleUpdateBU = async (id: string) => {
+    if (!editBuName.trim() || !editBuCode.trim()) return;
+    setBuSaving(true);
+    try {
+      const res = await fetch(`/api/business-units/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editBuName.trim(), code: editBuCode.trim().toUpperCase() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("Business Unit mise a jour");
+        setEditingBuId(null);
+        fetchBusinessUnits();
+      } else {
+        toast.error(json.error || "Erreur lors de la mise a jour");
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    } finally {
+      setBuSaving(false);
+    }
+  };
+
+  const handleToggleBU = async (bu: BusinessUnit) => {
+    try {
+      const res = await fetch(`/api/business-units/${bu.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !bu.isActive }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(bu.isActive ? "BU desactivee" : "BU activee");
+        fetchBusinessUnits();
+      } else {
+        toast.error(json.error || "Erreur");
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    }
+  };
+
+  const handleDeleteBU = async (bu: BusinessUnit) => {
+    if (!confirm(`Supprimer la BU "${bu.name}" ? Cette action est irreversible.`)) return;
+    try {
+      const res = await fetch(`/api/business-units/${bu.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("Business Unit supprimee");
+        fetchBusinessUnits();
+      } else {
+        toast.error(json.error || "Impossible de supprimer cette BU");
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -817,6 +941,178 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Section: Business Units */}
+          <div className="bg-surface-raised border border-zinc-800/50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+                <Building2 size={14} className="text-zinc-500" />
+                Business Units
+              </h2>
+              {!showBuForm && (
+                <button
+                  onClick={() => setShowBuForm(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+                >
+                  <Plus size={12} />
+                  Ajouter une BU
+                </button>
+              )}
+            </div>
+
+            <p className="text-xs text-zinc-500 mb-4">
+              Gerez les Business Units pour le suivi du CA par entite.
+            </p>
+
+            {/* Add BU Form */}
+            {showBuForm && (
+              <div className="border border-accent/30 rounded-lg p-4 mb-4 bg-accent/5">
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-[10px] font-bold tracking-[0.15em] uppercase text-zinc-500 mb-1">
+                      NOM
+                    </label>
+                    <input
+                      type="text"
+                      value={buFormName}
+                      onChange={(e) => setBuFormName(e.target.value)}
+                      placeholder="Ex: Production"
+                      className="w-full px-3 py-2 text-sm bg-surface border border-zinc-800/50 rounded-lg text-zinc-100 outline-none focus:border-accent transition-colors placeholder:text-zinc-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold tracking-[0.15em] uppercase text-zinc-500 mb-1">
+                      CODE
+                    </label>
+                    <input
+                      type="text"
+                      value={buFormCode}
+                      onChange={(e) => setBuFormCode(e.target.value.toUpperCase())}
+                      placeholder="Ex: PROD"
+                      maxLength={10}
+                      className="w-full px-3 py-2 text-sm bg-surface border border-zinc-800/50 rounded-lg text-zinc-100 outline-none focus:border-accent transition-colors placeholder:text-zinc-600 font-mono tracking-wider"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="accent"
+                    size="sm"
+                    onClick={handleCreateBU}
+                    loading={buSaving}
+                    disabled={!buFormName.trim() || !buFormCode.trim()}
+                  >
+                    Creer
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowBuForm(false);
+                      setBuFormName("");
+                      setBuFormCode("");
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* BU List */}
+            {buLoading ? (
+              <div className="text-xs text-zinc-500 py-4 text-center">Chargement...</div>
+            ) : businessUnits.length === 0 ? (
+              <div className="text-xs text-zinc-500 py-4 text-center border border-zinc-800/30 rounded-lg border-dashed">
+                Aucune Business Unit configuree
+              </div>
+            ) : (
+              <div className="space-y-0 border border-zinc-800/50 rounded-lg overflow-hidden">
+                {businessUnits.map((bu) => (
+                  <div
+                    key={bu.id}
+                    className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/30 last:border-b-0 hover:bg-zinc-800/20 transition-colors"
+                  >
+                    {editingBuId === bu.id ? (
+                      <div className="flex items-center gap-3 flex-1">
+                        <input
+                          type="text"
+                          value={editBuName}
+                          onChange={(e) => setEditBuName(e.target.value)}
+                          className="px-2 py-1 text-sm bg-surface border border-zinc-800/50 rounded text-zinc-100 outline-none focus:border-accent transition-colors w-40"
+                        />
+                        <input
+                          type="text"
+                          value={editBuCode}
+                          onChange={(e) => setEditBuCode(e.target.value.toUpperCase())}
+                          maxLength={10}
+                          className="px-2 py-1 text-sm bg-surface border border-zinc-800/50 rounded text-zinc-100 outline-none focus:border-accent transition-colors w-24 font-mono tracking-wider"
+                        />
+                        <button
+                          onClick={() => handleUpdateBU(bu.id)}
+                          disabled={buSaving}
+                          className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+                        >
+                          Enregistrer
+                        </button>
+                        <button
+                          onClick={() => setEditingBuId(null)}
+                          className="text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors"
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-zinc-200">{bu.name}</span>
+                          <span className="text-2xs font-mono font-bold tracking-wider text-zinc-500 bg-zinc-800/50 px-2 py-0.5 rounded">
+                            {bu.code}
+                          </span>
+                          <span
+                            className={`text-2xs font-bold tracking-[0.1em] uppercase px-2 py-0.5 rounded ${
+                              bu.isActive
+                                ? "bg-success/10 text-success"
+                                : "bg-zinc-800/50 text-zinc-600"
+                            }`}
+                          >
+                            {bu.isActive ? "ACTIF" : "INACTIF"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setEditingBuId(bu.id);
+                              setEditBuName(bu.name);
+                              setEditBuCode(bu.code);
+                            }}
+                            className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 rounded transition-colors"
+                            title="Modifier"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleBU(bu)}
+                            className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 rounded transition-colors"
+                            title={bu.isActive ? "Desactiver" : "Activer"}
+                          >
+                            {bu.isActive ? <ToggleRight size={14} className="text-success" /> : <ToggleLeft size={14} />}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBU(bu)}
+                            className="p-1.5 text-zinc-500 hover:text-danger hover:bg-danger/10 rounded transition-colors"
+                            title="Supprimer"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Section: ActiveCollab */}

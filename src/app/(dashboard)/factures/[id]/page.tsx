@@ -54,6 +54,8 @@ interface InvoiceDetail {
   };
   project: { id: string; name: string } | null;
   createdBy: { id: string; name: string };
+  seller: { id: string; name: string } | null;
+  salesBu: { id: string; name: string; code: string } | null;
   quote: { id: string; reference: string } | null;
   items: InvoiceItem[];
   payments: PaymentItem[];
@@ -69,6 +71,7 @@ interface InvoiceItem {
   total: string | number;
   position: number;
   product: { id: string; name: string; sku: string } | null;
+  productiveBu: { id: string; name: string; code: string } | null;
 }
 
 interface PaymentItem {
@@ -634,6 +637,29 @@ export default function FactureDetailPage() {
                   {invoice.createdBy.name}
                 </div>
               </div>
+              {invoice.seller && (
+                <div>
+                  <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#999] mb-1">
+                    VENDEUR
+                  </div>
+                  <div className="text-[13px] font-bold text-black">
+                    {invoice.seller.name}
+                  </div>
+                </div>
+              )}
+              {invoice.salesBu && (
+                <div>
+                  <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#999] mb-1">
+                    BU VENTE
+                  </div>
+                  <div className="text-[13px] font-bold text-black">
+                    {invoice.salesBu.name}
+                    <span className="text-[10px] text-[#999] ml-1.5 font-mono">
+                      {invoice.salesBu.code}
+                    </span>
+                  </div>
+                </div>
+              )}
               {invoice.quote && (
                 <div>
                   <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#999] mb-1">
@@ -668,9 +694,10 @@ export default function FactureDetailPage() {
           </div>
 
           {/* Table Header */}
-          <div className="grid grid-cols-[40px_1fr_80px_120px_100px_120px] gap-2 text-[10px] font-bold tracking-[0.15em] uppercase text-[#999] border-b border-[#E5E5E5] pb-2">
+          <div className="grid grid-cols-[40px_1fr_80px_80px_120px_100px_120px] gap-2 text-[10px] font-bold tracking-[0.15em] uppercase text-[#999] border-b border-[#E5E5E5] pb-2">
             <div>#</div>
             <div>DESCRIPTION</div>
+            <div>BU PROD.</div>
             <div className="text-right">QTE</div>
             <div className="text-right">PRIX UNIT.</div>
             <div className="text-right">REMISE</div>
@@ -681,7 +708,7 @@ export default function FactureDetailPage() {
           {invoice.items.map((item) => (
             <div
               key={item.id}
-              className="grid grid-cols-[40px_1fr_80px_120px_100px_120px] gap-2 text-[13px] py-3 border-b border-[#F5F5F5] items-center"
+              className="grid grid-cols-[40px_1fr_80px_80px_120px_100px_120px] gap-2 text-[13px] py-3 border-b border-[#F5F5F5] items-center"
             >
               <div className="text-[11px] font-bold text-[#999]">{item.position}</div>
               <div>
@@ -690,6 +717,15 @@ export default function FactureDetailPage() {
                   <div className="text-[10px] text-[#999]">
                     SKU: {item.product.sku}
                   </div>
+                )}
+              </div>
+              <div>
+                {item.productiveBu ? (
+                  <span className="text-[10px] font-mono font-bold tracking-wider text-[#999] bg-[#F5F5F5] px-1.5 py-0.5 rounded">
+                    {item.productiveBu.code}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-[#CCC]">-</span>
                 )}
               </div>
               <div className="text-right tabular-nums">
