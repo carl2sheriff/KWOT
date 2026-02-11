@@ -43,6 +43,16 @@ interface ProjectDetail {
   _count: { tasks: number; quotes: number; invoices: number; purchaseOrders: number };
 }
 
+interface TimeByUser {
+  userId: string;
+  userName: string;
+  hours: number;
+  billableHours: number;
+  hourlyRate: number;
+  totalCost: number;
+  entries: number;
+}
+
 interface Financials {
   revenue: number;
   costs: number;
@@ -60,6 +70,7 @@ interface Financials {
   profitabilityRate: number;
   timeEntryCount: number;
   expenseCount: number;
+  timeByUser: TimeByUser[];
 }
 
 function formatCurrency(amount: number | string): string {
@@ -381,6 +392,66 @@ export default function ProjetDetailPage() {
                   <p className={`text-2xl font-black tabular-nums ${financials.profitabilityRate >= 0 ? 'text-success' : 'text-danger'}`}>
                     {financials.profitabilityRate.toFixed(1)}%
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Time Tracking per User */}
+          {financials && financials.timeByUser && financials.timeByUser.length > 0 && (
+            <div>
+              <h3 className="text-xs font-medium text-zinc-500 mb-3">Suivi du temps par personne</h3>
+              <div className="bg-surface-raised border border-zinc-800/50 rounded-xl overflow-hidden">
+                {/* Table Header */}
+                <div className="grid grid-cols-[1fr_80px_100px_100px_120px] gap-3 px-6 py-3 border-b border-zinc-800/50">
+                  <div className="text-2xs font-bold tracking-widest uppercase text-zinc-500">Personne</div>
+                  <div className="text-2xs font-bold tracking-widest uppercase text-zinc-500 text-right">Heures</div>
+                  <div className="text-2xs font-bold tracking-widest uppercase text-zinc-500 text-right">Taux/h</div>
+                  <div className="text-2xs font-bold tracking-widest uppercase text-zinc-500 text-right">Cout</div>
+                  <div className="text-2xs font-bold tracking-widest uppercase text-zinc-500 text-right">Facturable</div>
+                </div>
+                {/* Rows */}
+                {financials.timeByUser.map((tu) => (
+                  <div
+                    key={tu.userId}
+                    className="grid grid-cols-[1fr_80px_100px_100px_120px] gap-3 px-6 py-3 border-b border-zinc-800/30 last:border-b-0 hover:bg-zinc-800/20 transition-colors"
+                  >
+                    <div>
+                      <span className="text-sm font-medium text-zinc-100">{tu.userName}</span>
+                      <span className="text-2xs text-zinc-600 ml-2">{tu.entries} saisie{tu.entries > 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="text-sm text-zinc-100 tabular-nums text-right font-medium">
+                      {tu.hours.toFixed(1)}h
+                    </div>
+                    <div className="text-sm text-zinc-400 tabular-nums text-right">
+                      {tu.hourlyRate > 0 ? formatCurrency(tu.hourlyRate) : "-"}
+                    </div>
+                    <div className="text-sm text-zinc-100 tabular-nums text-right font-bold">
+                      {tu.totalCost > 0 ? formatCurrency(tu.totalCost) : "-"}
+                    </div>
+                    <div className="text-sm tabular-nums text-right">
+                      <span className="text-zinc-400">{tu.billableHours.toFixed(1)}h</span>
+                      {tu.hours > 0 && (
+                        <span className="text-2xs text-zinc-600 ml-1">
+                          ({Math.round((tu.billableHours / tu.hours) * 100)}%)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {/* Total Row */}
+                <div className="grid grid-cols-[1fr_80px_100px_100px_120px] gap-3 px-6 py-3 bg-zinc-800/30 border-t border-zinc-700/50">
+                  <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Total</div>
+                  <div className="text-sm text-zinc-100 tabular-nums text-right font-bold">
+                    {financials.totalHours.toFixed(1)}h
+                  </div>
+                  <div className="text-sm text-zinc-400 text-right">-</div>
+                  <div className="text-sm text-accent tabular-nums text-right font-bold">
+                    {formatCurrency(financials.timeCost)}
+                  </div>
+                  <div className="text-sm tabular-nums text-right">
+                    <span className="text-zinc-400">{financials.billableHours.toFixed(1)}h</span>
+                  </div>
                 </div>
               </div>
             </div>

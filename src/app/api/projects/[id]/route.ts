@@ -105,16 +105,52 @@ export const GET = withApiMiddleware(async (_req, context) => {
     }),
   ])
 
-  // Calculate time cost from individual entries with hourly rates
-  const timeEntriesWithRates = await prisma.timeEntry.findMany({
-    where: { projectId: id, hourlyRate: { not: null } },
-    select: { duration: true, hourlyRate: true },
+  // Get all time entries with user info for per-person breakdown
+  const timeEntriesWithUsers = await prisma.timeEntry.findMany({
+    where: { projectId: id },
+    select: {
+      duration: true,
+      hourlyRate: true,
+      billable: true,
+      user: { select: { id: true, name: true } },
+    },
   })
-  const timeCost = timeEntriesWithRates.reduce((sum, te) => {
+
+  // Calculate time cost
+  const timeCost = timeEntriesWithUsers
+    .filter(te => te.hourlyRate !== null)
+    .reduce((sum, te) => {
+      const hours = (te.duration || 0) / 60
+      const rate = te.hourlyRate ? parseFloat(te.hourlyRate.toString()) : 0
+      return sum + hours * rate
+    }, 0)
+
+  // Build per-user breakdown
+  const userTimeMap = new Map<string, { id: string; name: string; totalMinutes: number; billableMinutes: number; totalCost: number; rate: number; entries: number }>()
+  for (const te of timeEntriesWithUsers) {
+    const uid = te.user.id
+    const existing = userTimeMap.get(uid) || { id: uid, name: te.user.name, totalMinutes: 0, billableMinutes: 0, totalCost: 0, rate: 0, entries: 0 }
+    existing.totalMinutes += te.duration || 0
+    if (te.billable) existing.billableMinutes += te.duration || 0
     const hours = (te.duration || 0) / 60
     const rate = te.hourlyRate ? parseFloat(te.hourlyRate.toString()) : 0
-    return sum + hours * rate
-  }, 0)
+    existing.totalCost += hours * rate
+    if (rate > 0) existing.rate = rate // last non-zero rate
+    existing.entries += 1
+    userTimeMap.set(uid, existing)
+  }
+
+  const timeByUser = Array.from(userTimeMap.values())
+    .sort((a, b) => b.totalCost - a.totalCost)
+    .map(u => ({
+      userId: u.id,
+      userName: u.name,
+      hours: r(u.totalMinutes / 60),
+      billableHours: r(u.billableMinutes / 60),
+      hourlyRate: r(u.rate),
+      totalCost: r(u.totalCost),
+      entries: u.entries,
+    }))
 
   const totalMinutes = timeAgg._sum.duration || 0
   const billableMinutes = billableTimeAgg._sum.duration || 0
@@ -148,6 +184,7 @@ export const GET = withApiMiddleware(async (_req, context) => {
       profitabilityRate: r(profitabilityRate),
       timeEntryCount: timeAgg._count,
       expenseCount: expenseAgg._count,
+      timeByUser,
     },
   })
 })
