@@ -97,6 +97,7 @@ model User {
   name          String
   role          String    @default("user") // admin, manager, user
   avatar        String?
+  hourlyRate    Decimal?  @map("hourly_rate") @db.Decimal(10, 2)
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 

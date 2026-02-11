@@ -71,8 +71,7 @@ export const GET = withApiMiddleware(async (_req, context) => {
     .filter((po) => costStatuses.includes(po.status))
     .reduce((sum, po) => sum + parseFloat(po.total.toString()), 0)
 
-  const margin = revenue - costs
-  const marginRate = revenue > 0 ? (margin / revenue) * 100 : 0
+  const budget = project.budget ? parseFloat(project.budget.toString()) : 0
 
   const quotedAmount = project.quotes
     .filter((q) => quotedStatuses.includes(q.status))
@@ -86,6 +85,8 @@ export const GET = withApiMiddleware(async (_req, context) => {
   const outstandingAmount = project.invoices
     .filter((inv) => outstandingStatuses.includes(inv.status))
     .reduce((sum, inv) => sum + parseFloat(inv.amountDue.toString()), 0)
+
+  const r = (n: number) => Math.round(n * 100) / 100
 
   // Time tracking & expenses profitability
   const [timeAgg, expenseAgg, billableTimeAgg] = await Promise.all([
@@ -106,36 +107,40 @@ export const GET = withApiMiddleware(async (_req, context) => {
   ])
 
   // Get all time entries with user info for per-person breakdown
+  // Include user.hourlyRate as fallback when entry has no rate
   const timeEntriesWithUsers = await prisma.timeEntry.findMany({
     where: { projectId: id },
     select: {
       duration: true,
       hourlyRate: true,
       billable: true,
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, hourlyRate: true } },
     },
   })
 
-  // Calculate time cost
-  const timeCost = timeEntriesWithUsers
-    .filter(te => te.hourlyRate !== null)
-    .reduce((sum, te) => {
-      const hours = (te.duration || 0) / 60
-      const rate = te.hourlyRate ? parseFloat(te.hourlyRate.toString()) : 0
-      return sum + hours * rate
-    }, 0)
+  // Calculate time cost (entry rate takes priority, fallback to user default rate)
+  const timeCost = timeEntriesWithUsers.reduce((sum, te) => {
+    const hours = (te.duration || 0) / 60
+    const entryRate = te.hourlyRate ? parseFloat(te.hourlyRate.toString()) : 0
+    const userRate = te.user.hourlyRate ? parseFloat(te.user.hourlyRate.toString()) : 0
+    const rate = entryRate > 0 ? entryRate : userRate
+    return sum + hours * rate
+  }, 0)
 
   // Build per-user breakdown
   const userTimeMap = new Map<string, { id: string; name: string; totalMinutes: number; billableMinutes: number; totalCost: number; rate: number; entries: number }>()
   for (const te of timeEntriesWithUsers) {
     const uid = te.user.id
+    const entryRate = te.hourlyRate ? parseFloat(te.hourlyRate.toString()) : 0
+    const userRate = te.user.hourlyRate ? parseFloat(te.user.hourlyRate.toString()) : 0
+    const rate = entryRate > 0 ? entryRate : userRate
+
     const existing = userTimeMap.get(uid) || { id: uid, name: te.user.name, totalMinutes: 0, billableMinutes: 0, totalCost: 0, rate: 0, entries: 0 }
     existing.totalMinutes += te.duration || 0
     if (te.billable) existing.billableMinutes += te.duration || 0
     const hours = (te.duration || 0) / 60
-    const rate = te.hourlyRate ? parseFloat(te.hourlyRate.toString()) : 0
     existing.totalCost += hours * rate
-    if (rate > 0) existing.rate = rate // last non-zero rate
+    if (rate > 0) existing.rate = rate
     existing.entries += 1
     userTimeMap.set(uid, existing)
   }
@@ -155,11 +160,22 @@ export const GET = withApiMiddleware(async (_req, context) => {
   const totalMinutes = timeAgg._sum.duration || 0
   const billableMinutes = billableTimeAgg._sum.duration || 0
   const expenseCost = expenseAgg._sum.amount ? parseFloat(expenseAgg._sum.amount.toString()) : 0
-  const totalCost = timeCost + expenseCost + costs
-  const profitability = revenue - totalCost
-  const profitabilityRate = revenue > 0 ? (profitability / revenue) * 100 : 0
 
-  const r = (n: number) => Math.round(n * 100) / 100
+  // MSCV (Marge Sur Couts Variables) - 3 phases
+  const poCost = costs
+  const variableCostProvisoire = timeCost + expenseCost
+
+  // MSCV previsionnelle = Devis approuve - Budget
+  const mscvPrevisionnelle = quotedAmount - budget
+  const mscvPrevisionnelleRate = quotedAmount > 0 ? (mscvPrevisionnelle / quotedAmount) * 100 : 0
+
+  // MSCV provisoire = CA facture - (Temps + Depenses)
+  const mscvProvisoire = revenue - variableCostProvisoire
+  const mscvProvisoireRate = revenue > 0 ? (mscvProvisoire / revenue) * 100 : 0
+
+  // MSCV definitive = CA facture - PO
+  const mscvDefinitive = revenue - poCost
+  const mscvDefinitiveRate = revenue > 0 ? (mscvDefinitive / revenue) * 100 : 0
 
   // Return project without the raw invoice/quote/PO arrays (we send counts + financials instead)
   const { invoices: _invoices, quotes: _quotes, purchaseOrders: _pos, ...projectData } = project
@@ -168,20 +184,25 @@ export const GET = withApiMiddleware(async (_req, context) => {
     project: projectData,
     financials: {
       revenue: r(revenue),
-      costs: r(costs),
-      margin: r(margin),
-      marginRate: r(marginRate),
       quotedAmount: r(quotedAmount),
       paidAmount: r(paidAmount),
       outstandingAmount: r(outstandingAmount),
-      // Profitability
-      totalHours: r(totalMinutes / 60),
-      billableHours: r(billableMinutes / 60),
+      budget: r(budget),
+      // Variable costs breakdown
       timeCost: r(timeCost),
       expenseCost: r(expenseCost),
-      totalCost: r(totalCost),
-      profitability: r(profitability),
-      profitabilityRate: r(profitabilityRate),
+      variableCostProvisoire: r(variableCostProvisoire),
+      poCost: r(poCost),
+      // MSCV 3 phases
+      mscvPrevisionnelle: r(mscvPrevisionnelle),
+      mscvPrevisionnelleRate: r(mscvPrevisionnelleRate),
+      mscvProvisoire: r(mscvProvisoire),
+      mscvProvisoireRate: r(mscvProvisoireRate),
+      mscvDefinitive: r(mscvDefinitive),
+      mscvDefinitiveRate: r(mscvDefinitiveRate),
+      // Time tracking detail
+      totalHours: r(totalMinutes / 60),
+      billableHours: r(billableMinutes / 60),
       timeEntryCount: timeAgg._count,
       expenseCount: expenseAgg._count,
       timeByUser,

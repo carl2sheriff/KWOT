@@ -64,6 +64,12 @@ interface DashboardStats {
   recentQuotes: RecentQuote[]
   monthlyRevenue: MonthlyRevenue[]
   invoicesByStatus: InvoiceByStatus[]
+  mscvPrevisionnelleYTD: number
+  mscvPrevisionnelleRateYTD: number
+  mscvProvisoireYTD: number
+  mscvProvisoireRateYTD: number
+  mscvDefinitiveYTD: number
+  mscvDefinitiveRateYTD: number
 }
 
 const formatCurrency = (amount: number): string =>
@@ -238,6 +244,35 @@ export default function DashboardPage() {
               icon={<FileText size={18} />}
               iconColor="text-info"
             />
+          </div>
+        )}
+
+        {/* MSCV YTD */}
+        {!loading && stats && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+            {([
+              { label: 'MSCV previsionnelle', value: stats.mscvPrevisionnelleYTD, rate: stats.mscvPrevisionnelleRateYTD, sub: 'Devis - Budget' },
+              { label: 'MSCV provisoire', value: stats.mscvProvisoireYTD, rate: stats.mscvProvisoireRateYTD, sub: 'CA - (Temps + Dep.)' },
+              { label: 'MSCV definitive', value: stats.mscvDefinitiveYTD, rate: stats.mscvDefinitiveRateYTD, sub: 'CA - PO' },
+            ] as const).map((m) => (
+              <div
+                key={m.label}
+                className={`bg-surface-raised border rounded-xl p-5 hover:border-zinc-700 transition-all duration-150 ${
+                  m.value >= 0 ? 'border-success/30' : 'border-danger/30'
+                }`}
+              >
+                <p className="text-xs text-zinc-500 mb-1">{m.label} (YTD)</p>
+                <p className={`text-xl font-bold tabular-nums ${m.value >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {formatCurrency(m.value)}
+                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-2xs text-zinc-600">{m.sub}</p>
+                  <p className={`text-xs font-bold tabular-nums ${m.rate >= 0 ? 'text-success' : 'text-danger'}`}>
+                    {m.rate.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

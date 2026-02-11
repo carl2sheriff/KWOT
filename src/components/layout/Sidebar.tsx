@@ -54,7 +54,7 @@ const navSections: NavSection[] = [
       { label: "Paiements", href: "/paiements", icon: CreditCard },
       { label: "Avoirs", href: "/avoirs", icon: FileX2 },
       { label: "Bons de commande", href: "/purchase-orders", icon: ShoppingCart },
-      { label: "Reporting CA", href: "/reporting", icon: BarChart3 },
+      { label: "Reporting", href: "/reporting", icon: BarChart3 },
     ],
   },
   {

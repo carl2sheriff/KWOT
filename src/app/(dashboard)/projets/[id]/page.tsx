@@ -16,10 +16,7 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
-  Percent,
   History,
-  Clock,
-  Wallet,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
@@ -55,19 +52,22 @@ interface TimeByUser {
 
 interface Financials {
   revenue: number;
-  costs: number;
-  margin: number;
-  marginRate: number;
   quotedAmount: number;
   paidAmount: number;
   outstandingAmount: number;
-  totalHours: number;
-  billableHours: number;
+  budget: number;
   timeCost: number;
   expenseCost: number;
-  totalCost: number;
-  profitability: number;
-  profitabilityRate: number;
+  variableCostProvisoire: number;
+  poCost: number;
+  mscvPrevisionnelle: number;
+  mscvPrevisionnelleRate: number;
+  mscvProvisoire: number;
+  mscvProvisoireRate: number;
+  mscvDefinitive: number;
+  mscvDefinitiveRate: number;
+  totalHours: number;
+  billableHours: number;
   timeEntryCount: number;
   expenseCount: number;
   timeByUser: TimeByUser[];
@@ -247,11 +247,13 @@ export default function ProjetDetailPage() {
             </div>
           </div>
 
-          {/* Suivi financier */}
+          {/* MSCV - Marge sur couts variables */}
           {financials && (
             <div>
-              <h3 className="text-xs font-medium text-zinc-500 mb-3">Suivi financier</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <h3 className="text-xs font-medium text-zinc-500 mb-3">Marge sur couts variables</h3>
+
+              {/* Ligne 1 : Contexte CA + Couts */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 {/* CA facture */}
                 <div className="bg-surface-raised border border-accent/30 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -265,133 +267,93 @@ export default function ProjetDetailPage() {
                   </p>
                 </div>
 
-                {/* Couts engages */}
+                {/* Couts provisoires (Temps + Depenses) */}
                 <div className="bg-surface-raised border border-warning/30 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="p-1.5 rounded-lg bg-warning/10">
                       <TrendingDown size={14} className="text-warning" />
                     </div>
-                    <span className="text-2xs text-zinc-500 font-medium">Couts engages</span>
+                    <span className="text-2xs text-zinc-500 font-medium">Couts provisoires</span>
                   </div>
                   <p className="text-lg font-bold text-zinc-100 tabular-nums">
-                    {formatCurrency(financials.costs)}
+                    {formatCurrency(financials.variableCostProvisoire)}
+                  </p>
+                  <p className="text-2xs text-zinc-600 mt-1">
+                    Temps: {formatCurrency(financials.timeCost)} + Dep.: {formatCurrency(financials.expenseCost)}
                   </p>
                 </div>
 
-                {/* Marge brute */}
-                <div
-                  className={`bg-surface-raised border rounded-xl p-4 ${
-                    financials.margin >= 0
-                      ? "border-success/30"
-                      : "border-danger/30"
-                  }`}
-                >
+                {/* Couts PO engages */}
+                <div className="bg-surface-raised border border-zinc-800/50 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <div
-                      className={`p-1.5 rounded-lg ${
-                        financials.margin >= 0 ? "bg-success/10" : "bg-danger/10"
-                      }`}
-                    >
-                      <TrendingUp
-                        size={14}
-                        className={financials.margin >= 0 ? "text-success" : "text-danger"}
-                      />
+                    <div className="p-1.5 rounded-lg bg-zinc-800/50">
+                      <ShoppingCart size={14} className="text-zinc-400" />
                     </div>
-                    <span className="text-2xs text-zinc-500 font-medium">Marge brute</span>
+                    <span className="text-2xs text-zinc-500 font-medium">Couts PO engages</span>
                   </div>
-                  <p
-                    className={`text-lg font-bold tabular-nums ${
-                      financials.margin >= 0 ? "text-success" : "text-danger"
-                    }`}
-                  >
-                    {formatCurrency(financials.margin)}
-                  </p>
-                </div>
-
-                {/* Taux de marge */}
-                <div
-                  className={`bg-surface-raised border rounded-xl p-4 ${
-                    financials.marginRate >= 0
-                      ? "border-success/30"
-                      : "border-danger/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <div
-                      className={`p-1.5 rounded-lg ${
-                        financials.marginRate >= 0 ? "bg-success/10" : "bg-danger/10"
-                      }`}
-                    >
-                      <Percent
-                        size={14}
-                        className={financials.marginRate >= 0 ? "text-success" : "text-danger"}
-                      />
-                    </div>
-                    <span className="text-2xs text-zinc-500 font-medium">Taux de marge</span>
-                  </div>
-                  <p
-                    className={`text-2xl font-black tabular-nums ${
-                      financials.marginRate >= 0 ? "text-success" : "text-danger"
-                    }`}
-                  >
-                    {financials.marginRate.toFixed(1)}%
+                  <p className="text-lg font-bold text-zinc-100 tabular-nums">
+                    {formatCurrency(financials.poCost)}
                   </p>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Rentabilite */}
-          {financials && (financials.timeEntryCount > 0 || financials.expenseCount > 0) && (
-            <div>
-              <h3 className="text-xs font-medium text-zinc-500 mb-3">Rentabilite</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-surface-raised border border-zinc-800/50 rounded-xl p-4">
+              {/* Ligne 2 : Les 3 MSCV */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* MSCV previsionnelle */}
+                <div className={`bg-surface-raised border rounded-xl p-4 ${financials.mscvPrevisionnelle >= 0 ? "border-success/30" : "border-danger/30"}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="p-1.5 rounded-lg bg-zinc-800/50">
-                      <Clock size={14} className="text-zinc-400" />
+                    <div className={`p-1.5 rounded-lg ${financials.mscvPrevisionnelle >= 0 ? "bg-success/10" : "bg-danger/10"}`}>
+                      <TrendingUp size={14} className={financials.mscvPrevisionnelle >= 0 ? "text-success" : "text-danger"} />
                     </div>
-                    <span className="text-2xs text-zinc-500 font-medium">Heures</span>
+                    <span className="text-2xs text-zinc-500 font-medium">MSCV previsionnelle</span>
                   </div>
-                  <p className="text-lg font-bold text-zinc-100 tabular-nums">{financials.totalHours}h</p>
-                  <p className="text-2xs text-zinc-600 mt-1">{financials.billableHours}h facturables</p>
+                  <p className={`text-lg font-bold tabular-nums ${financials.mscvPrevisionnelle >= 0 ? "text-success" : "text-danger"}`}>
+                    {formatCurrency(financials.mscvPrevisionnelle)}
+                  </p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-2xs text-zinc-600">Devis - Budget</p>
+                    <p className={`text-xs font-bold tabular-nums ${financials.mscvPrevisionnelleRate >= 0 ? "text-success" : "text-danger"}`}>
+                      {financials.mscvPrevisionnelleRate.toFixed(1)}%
+                    </p>
+                  </div>
                 </div>
 
-                <div className="bg-surface-raised border border-zinc-800/50 rounded-xl p-4">
+                {/* MSCV provisoire */}
+                <div className={`bg-surface-raised border rounded-xl p-4 ${financials.mscvProvisoire >= 0 ? "border-success/30" : "border-danger/30"}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="p-1.5 rounded-lg bg-zinc-800/50">
-                      <Wallet size={14} className="text-zinc-400" />
+                    <div className={`p-1.5 rounded-lg ${financials.mscvProvisoire >= 0 ? "bg-success/10" : "bg-danger/10"}`}>
+                      <TrendingUp size={14} className={financials.mscvProvisoire >= 0 ? "text-success" : "text-danger"} />
                     </div>
-                    <span className="text-2xs text-zinc-500 font-medium">Cout total</span>
+                    <span className="text-2xs text-zinc-500 font-medium">MSCV provisoire</span>
                   </div>
-                  <p className="text-lg font-bold text-zinc-100 tabular-nums">{formatCurrency(financials.totalCost)}</p>
-                  <p className="text-2xs text-zinc-600 mt-1">
-                    Temps: {formatCurrency(financials.timeCost)} + Depenses: {formatCurrency(financials.expenseCost)}
+                  <p className={`text-lg font-bold tabular-nums ${financials.mscvProvisoire >= 0 ? "text-success" : "text-danger"}`}>
+                    {formatCurrency(financials.mscvProvisoire)}
                   </p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-2xs text-zinc-600">CA - (Temps + Dep.)</p>
+                    <p className={`text-xs font-bold tabular-nums ${financials.mscvProvisoireRate >= 0 ? "text-success" : "text-danger"}`}>
+                      {financials.mscvProvisoireRate.toFixed(1)}%
+                    </p>
+                  </div>
                 </div>
 
-                <div className={`bg-surface-raised border rounded-xl p-4 ${financials.profitability >= 0 ? 'border-success/30' : 'border-danger/30'}`}>
+                {/* MSCV definitive */}
+                <div className={`bg-surface-raised border rounded-xl p-4 ${financials.mscvDefinitive >= 0 ? "border-success/30" : "border-danger/30"}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className={`p-1.5 rounded-lg ${financials.profitability >= 0 ? 'bg-success/10' : 'bg-danger/10'}`}>
-                      <TrendingUp size={14} className={financials.profitability >= 0 ? 'text-success' : 'text-danger'} />
+                    <div className={`p-1.5 rounded-lg ${financials.mscvDefinitive >= 0 ? "bg-success/10" : "bg-danger/10"}`}>
+                      <TrendingUp size={14} className={financials.mscvDefinitive >= 0 ? "text-success" : "text-danger"} />
                     </div>
-                    <span className="text-2xs text-zinc-500 font-medium">Resultat net</span>
+                    <span className="text-2xs text-zinc-500 font-medium">MSCV definitive</span>
                   </div>
-                  <p className={`text-lg font-bold tabular-nums ${financials.profitability >= 0 ? 'text-success' : 'text-danger'}`}>
-                    {formatCurrency(financials.profitability)}
+                  <p className={`text-lg font-bold tabular-nums ${financials.mscvDefinitive >= 0 ? "text-success" : "text-danger"}`}>
+                    {formatCurrency(financials.mscvDefinitive)}
                   </p>
-                </div>
-
-                <div className={`bg-surface-raised border rounded-xl p-4 ${financials.profitabilityRate >= 0 ? 'border-success/30' : 'border-danger/30'}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`p-1.5 rounded-lg ${financials.profitabilityRate >= 0 ? 'bg-success/10' : 'bg-danger/10'}`}>
-                      <Percent size={14} className={financials.profitabilityRate >= 0 ? 'text-success' : 'text-danger'} />
-                    </div>
-                    <span className="text-2xs text-zinc-500 font-medium">Taux rentabilite</span>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-2xs text-zinc-600">CA - PO</p>
+                    <p className={`text-xs font-bold tabular-nums ${financials.mscvDefinitiveRate >= 0 ? "text-success" : "text-danger"}`}>
+                      {financials.mscvDefinitiveRate.toFixed(1)}%
+                    </p>
                   </div>
-                  <p className={`text-2xl font-black tabular-nums ${financials.profitabilityRate >= 0 ? 'text-success' : 'text-danger'}`}>
-                    {financials.profitabilityRate.toFixed(1)}%
-                  </p>
                 </div>
               </div>
             </div>

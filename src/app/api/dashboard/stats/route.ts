@@ -151,6 +151,77 @@ export const GET = withApiMiddleware(async () => {
     amount: Number(row._sum.total ?? 0),
   }))
 
+  // ---- MSCV YTD (3 phases) ----
+  const revenueInvoicesYTD = await prisma.invoice.findMany({
+    where: {
+      status: { in: ['SENT', 'PAID', 'PARTIALLY_PAID'] },
+      issueDate: { gte: startOfYear },
+      projectId: { not: null },
+    },
+    select: { projectId: true, total: true },
+  })
+
+  const projectRevenueMap = new Map<string, number>()
+  for (const inv of revenueInvoicesYTD) {
+    if (!inv.projectId) continue
+    projectRevenueMap.set(inv.projectId, (projectRevenueMap.get(inv.projectId) || 0) + Number(inv.total))
+  }
+  const mscvProjectIds = Array.from(projectRevenueMap.keys())
+  const totalRevenueYTDForMSCV = Array.from(projectRevenueMap.values()).reduce((a, b) => a + b, 0)
+
+  let mscvQuotedAmountYTD = 0
+  let mscvBudgetYTD = 0
+  let mscvTimeCostYTD = 0
+  let mscvExpenseCostYTD = 0
+  let mscvPoCostYTD = 0
+
+  if (mscvProjectIds.length > 0) {
+    const [projectsData, poResult, expenseResult, timeEntries] = await Promise.all([
+      prisma.project.findMany({
+        where: { id: { in: mscvProjectIds } },
+        select: {
+          id: true,
+          budget: true,
+          quotes: {
+            where: { status: { in: ['APPROVED', 'SENT'] } },
+            select: { total: true },
+          },
+        },
+      }),
+      prisma.purchaseOrder.aggregate({
+        where: { projectId: { in: mscvProjectIds }, status: { in: ['CONFIRMED', 'RECEIVED'] } },
+        _sum: { total: true },
+      }),
+      prisma.expense.aggregate({
+        where: { projectId: { in: mscvProjectIds } },
+        _sum: { amount: true },
+      }),
+      prisma.timeEntry.findMany({
+        where: { projectId: { in: mscvProjectIds } },
+        select: { duration: true, hourlyRate: true, user: { select: { hourlyRate: true } } },
+      }),
+    ])
+
+    for (const p of projectsData) {
+      mscvBudgetYTD += p.budget ? Number(p.budget) : 0
+      mscvQuotedAmountYTD += p.quotes.reduce((s, q) => s + Number(q.total), 0)
+    }
+
+    mscvPoCostYTD = Number(poResult._sum.total ?? 0)
+    mscvExpenseCostYTD = Number(expenseResult._sum.amount ?? 0)
+
+    for (const te of timeEntries) {
+      const hours = (te.duration || 0) / 60
+      const rate = te.hourlyRate ? Number(te.hourlyRate) : (te.user.hourlyRate ? Number(te.user.hourlyRate) : 0)
+      mscvTimeCostYTD += hours * rate
+    }
+  }
+
+  const r = (n: number) => Math.round(n * 100) / 100
+  const mscvPrevisionnelleYTD = mscvQuotedAmountYTD - mscvBudgetYTD
+  const mscvProvisoireYTD = totalRevenueYTDForMSCV - (mscvTimeCostYTD + mscvExpenseCostYTD)
+  const mscvDefinitiveYTD = totalRevenueYTDForMSCV - mscvPoCostYTD
+
   return apiSuccess({
     revenueMTD,
     revenueYTD,
@@ -184,5 +255,12 @@ export const GET = withApiMiddleware(async () => {
     })),
     monthlyRevenue,
     invoicesByStatus,
+    // MSCV YTD
+    mscvPrevisionnelleYTD: r(mscvPrevisionnelleYTD),
+    mscvPrevisionnelleRateYTD: r(mscvQuotedAmountYTD > 0 ? (mscvPrevisionnelleYTD / mscvQuotedAmountYTD) * 100 : 0),
+    mscvProvisoireYTD: r(mscvProvisoireYTD),
+    mscvProvisoireRateYTD: r(totalRevenueYTDForMSCV > 0 ? (mscvProvisoireYTD / totalRevenueYTDForMSCV) * 100 : 0),
+    mscvDefinitiveYTD: r(mscvDefinitiveYTD),
+    mscvDefinitiveRateYTD: r(totalRevenueYTDForMSCV > 0 ? (mscvDefinitiveYTD / totalRevenueYTDForMSCV) * 100 : 0),
   })
 })

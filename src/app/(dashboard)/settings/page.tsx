@@ -5,7 +5,7 @@ import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { Loading } from "@/components/ui/Loading";
-import { Save, Building2, Calculator, FileText, Hash, Scale, Landmark, ScrollText, RefreshCw, CheckCircle2, XCircle, Plug, Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Save, Building2, Calculator, FileText, Hash, Scale, Landmark, ScrollText, RefreshCw, CheckCircle2, XCircle, Plug, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Users } from "lucide-react";
 
 interface CompanySettings {
   id: string;
@@ -71,6 +71,12 @@ export default function SettingsPage() {
   const [editingBuId, setEditingBuId] = useState<string | null>(null);
   const [editBuName, setEditBuName] = useState("");
   const [editBuCode, setEditBuCode] = useState("");
+
+  // Team rates
+  const [teamUsers, setTeamUsers] = useState<{ id: string; name: string; email: string; role: string; hourlyRate: string }[]>([]);
+  const [teamLoading, setTeamLoading] = useState(true);
+  const [teamSaving, setTeamSaving] = useState(false);
+  const [editedRates, setEditedRates] = useState<Record<string, string>>({});
 
   const [companyName, setCompanyName] = useState("");
   const [legalForm, setLegalForm] = useState("");
@@ -278,6 +284,62 @@ export default function SettingsPage() {
       }
     } catch {
       toast.error("Erreur de connexion");
+    }
+  };
+
+  // Fetch team users
+  const fetchTeamUsers = React.useCallback(async () => {
+    setTeamLoading(true);
+    try {
+      const res = await fetch("/api/users");
+      const json = await res.json();
+      if (json.success) {
+        setTeamUsers(
+          json.data.map((u: { id: string; name: string; email: string; role: string; hourlyRate: string | number | null }) => ({
+            ...u,
+            hourlyRate: u.hourlyRate != null ? String(u.hourlyRate) : "",
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+    } finally {
+      setTeamLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTeamUsers();
+  }, [fetchTeamUsers]);
+
+  const handleSaveRates = async () => {
+    const entries = Object.entries(editedRates);
+    if (entries.length === 0) return;
+
+    setTeamSaving(true);
+    try {
+      const rates = entries.map(([userId, hourlyRate]) => ({
+        userId,
+        hourlyRate: hourlyRate === "" ? null : parseFloat(hourlyRate),
+      }));
+
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rates }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`${json.data.length} tarif(s) mis a jour`);
+        setEditedRates({});
+        fetchTeamUsers();
+      } else {
+        toast.error(json.error || "Erreur lors de la mise a jour");
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    } finally {
+      setTeamSaving(false);
     }
   };
 
@@ -1111,6 +1173,89 @@ export default function SettingsPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section: Tarifs equipe */}
+          <div className="bg-surface-raised border border-zinc-800/50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+                <Users size={14} className="text-zinc-500" />
+                Tarifs equipe
+              </h2>
+              {Object.keys(editedRates).length > 0 && (
+                <Button
+                  variant="accent"
+                  size="sm"
+                  icon={<Save size={12} />}
+                  loading={teamSaving}
+                  onClick={handleSaveRates}
+                >
+                  Enregistrer les tarifs
+                </Button>
+              )}
+            </div>
+
+            <p className="text-xs text-zinc-500 mb-4">
+              Definissez le taux horaire par defaut de chaque membre de l&apos;equipe. Ce tarif est utilise comme base pour le calcul des couts sur les projets.
+            </p>
+
+            {teamLoading ? (
+              <div className="text-xs text-zinc-500 py-4 text-center">Chargement...</div>
+            ) : teamUsers.length === 0 ? (
+              <div className="text-xs text-zinc-500 py-4 text-center border border-zinc-800/30 rounded-lg border-dashed">
+                Aucun utilisateur
+              </div>
+            ) : (
+              <div className="border border-zinc-800/50 rounded-lg overflow-hidden">
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_150px_100px_80px] gap-4 px-4 py-2 bg-zinc-800/30 border-b border-zinc-800/50">
+                  <span className="text-2xs font-bold tracking-[0.15em] uppercase text-zinc-600">Nom</span>
+                  <span className="text-2xs font-bold tracking-[0.15em] uppercase text-zinc-600">Email</span>
+                  <span className="text-2xs font-bold tracking-[0.15em] uppercase text-zinc-600">Role</span>
+                  <span className="text-2xs font-bold tracking-[0.15em] uppercase text-zinc-600 text-right">Taux/h</span>
+                </div>
+                {teamUsers.map((user) => {
+                  const currentRate = editedRates[user.id] !== undefined ? editedRates[user.id] : user.hourlyRate;
+                  const isEdited = editedRates[user.id] !== undefined;
+                  return (
+                    <div
+                      key={user.id}
+                      className="grid grid-cols-[1fr_150px_100px_80px] gap-4 items-center px-4 py-2.5 border-b border-zinc-800/30 last:border-b-0 hover:bg-zinc-800/20 transition-colors"
+                    >
+                      <span className="text-sm font-medium text-zinc-200 truncate">{user.name}</span>
+                      <span className="text-xs text-zinc-500 truncate">{user.email}</span>
+                      <span className={`text-2xs font-bold tracking-[0.1em] uppercase px-2 py-0.5 rounded w-fit ${
+                        user.role === "ADMIN"
+                          ? "bg-accent/10 text-accent"
+                          : user.role === "MANAGER"
+                            ? "bg-warning/10 text-warning"
+                            : "bg-zinc-800/50 text-zinc-500"
+                      }`}>
+                        {user.role}
+                      </span>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={currentRate}
+                          onChange={(e) => {
+                            setEditedRates((prev) => ({ ...prev, [user.id]: e.target.value }));
+                          }}
+                          min={0}
+                          step={5}
+                          placeholder="0"
+                          className={`w-full bg-surface border rounded px-2 py-1.5 text-sm text-right outline-none transition-colors tabular-nums ${
+                            isEdited
+                              ? "border-accent text-accent"
+                              : "border-zinc-800 text-zinc-200 focus:border-accent"
+                          }`}
+                        />
+                        <span className="absolute right-8 top-1/2 -translate-y-1/2 text-2xs text-zinc-600">EUR</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

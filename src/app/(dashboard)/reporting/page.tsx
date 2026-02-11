@@ -56,11 +56,21 @@ interface MonthRow {
   caEncaisse: number;
 }
 
+interface MscvData {
+  previsionnelle: number;
+  previsionnelleRate: number;
+  provisoire: number;
+  provisoireRate: number;
+  definitive: number;
+  definitiveRate: number;
+}
+
 interface RevenueData {
   buSales?: BuRevenueRow[];
   buProductive?: BuProductiveRow[];
   sellers?: SellerRow[];
   months?: MonthRow[];
+  mscv?: MscvData;
 }
 
 type TabView = "bu" | "seller" | "month";
@@ -175,6 +185,7 @@ export default function ReportingPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<RevenueData>({});
+  const [mscv, setMscv] = useState<MscvData | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -185,6 +196,9 @@ export default function ReportingPage() {
       const json = await res.json();
       if (json.success) {
         setData(json.data);
+        if (json.data.mscv) {
+          setMscv(json.data.mscv);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch reporting data:", err);
@@ -193,9 +207,29 @@ export default function ReportingPage() {
     }
   }, [year, activeTab]);
 
+  // Fetch MSCV data on year change (from month view)
+  const fetchMscv = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/reporting/revenue?year=${year}&view=month`);
+      const json = await res.json();
+      if (json.success && json.data.mscv) {
+        setMscv(json.data.mscv);
+      }
+    } catch {
+      // silently fail
+    }
+  }, [year]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    // Only fetch MSCV separately if we're not on the month tab
+    if (activeTab !== "month") {
+      fetchMscv();
+    }
+  }, [year, activeTab, fetchMscv]);
 
   const years = [];
   const currentYear = new Date().getFullYear();
@@ -206,8 +240,8 @@ export default function ReportingPage() {
   return (
     <div className="flex flex-col h-full">
       <Header
-        title="Reporting CA"
-        subtitle="Analyse du chiffre d'affaires"
+        title="Reporting"
+        subtitle="CA et MSCV"
         actions={
           <div className="flex items-center gap-2">
             <TrendingUp size={14} className="text-accent" />
@@ -227,6 +261,37 @@ export default function ReportingPage() {
       />
 
       <div className="flex-1 overflow-auto p-6">
+        {/* MSCV Summary Cards */}
+        {mscv && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            {([
+              { label: "MSCV previsionnelle", value: mscv.previsionnelle, rate: mscv.previsionnelleRate, sub: "Devis - Budget" },
+              { label: "MSCV provisoire", value: mscv.provisoire, rate: mscv.provisoireRate, sub: "CA - (Temps + Dep.)" },
+              { label: "MSCV definitive", value: mscv.definitive, rate: mscv.definitiveRate, sub: "CA - PO" },
+            ] as const).map((m) => (
+              <div
+                key={m.label}
+                className={`bg-surface-raised border rounded-xl p-5 ${
+                  m.value >= 0 ? "border-success/30" : "border-danger/30"
+                }`}
+              >
+                <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-zinc-500 mb-2">
+                  {m.label} {year}
+                </p>
+                <p className={`text-2xl font-bold tabular-nums ${m.value >= 0 ? "text-success" : "text-danger"}`}>
+                  {formatCurrency(m.value)}
+                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-2xs text-zinc-600">{m.sub}</p>
+                  <p className={`text-xs font-bold tabular-nums ${m.rate >= 0 ? "text-success" : "text-danger"}`}>
+                    {m.rate.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex items-center gap-2 mb-6">
           <TabButton
