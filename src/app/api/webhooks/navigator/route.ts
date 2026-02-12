@@ -8,7 +8,7 @@ import { z } from 'zod'
 // Temporary user ID until auth is implemented
 const TEMP_USER_ID = '00000000-0000-0000-0000-000000000001'
 
-const WEBHOOK_SECRET = process.env.NAVIGATOR_WEBHOOK_SECRET || ''
+const WEBHOOK_SECRET = (process.env.NAVIGATOR_WEBHOOK_SECRET || '').trim()
 
 // ============================================
 // Webhook payload validation schema
