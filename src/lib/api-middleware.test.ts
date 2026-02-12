@@ -45,9 +45,9 @@ describe('parsePagination', () => {
   it('handles NaN values gracefully', () => {
     const params = new URLSearchParams('page=abc&limit=xyz')
     const { page, limit } = parsePagination(params)
-    // parseInt('abc') = NaN, Math.max(1, NaN) = NaN
-    expect(Number.isNaN(page)).toBe(true)
-    expect(Number.isNaN(limit)).toBe(true)
+    // NaN falls back to defaults
+    expect(page).toBe(1)
+    expect(limit).toBe(20)
   })
 })
 
