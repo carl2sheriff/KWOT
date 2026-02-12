@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiSuccess, apiError } from '@/lib/api-middleware'
 import { createAuditLog } from '@/lib/audit'
+import { timingSafeEqual } from 'crypto'
+import { z } from 'zod'
 
 // Temporary user ID until auth is implemented
 const TEMP_USER_ID = '00000000-0000-0000-0000-000000000001'
@@ -9,18 +11,80 @@ const TEMP_USER_ID = '00000000-0000-0000-0000-000000000001'
 const WEBHOOK_SECRET = process.env.NAVIGATOR_WEBHOOK_SECRET || ''
 
 // ============================================
+// Webhook payload validation schema
+// ============================================
+const webhookClientSchema = z.object({
+  id: z.string(),
+  nom: z.string(),
+}).nullable()
+
+const webhookBuSchema = z.object({
+  id: z.string(),
+  nom: z.string(),
+  numero: z.string(),
+}).nullable().optional()
+
+const webhookResponsableSchema = z.object({
+  id: z.string(),
+  prenom: z.string(),
+  nom: z.string(),
+}).nullable().optional()
+
+const webhookDataSchema = z.object({
+  id: z.string(),
+  nom: z.string().max(500),
+  numero: z.string().max(100).nullable(),
+  type: z.string().max(100),
+  statut: z.string().max(100),
+  dateDebut: z.string().nullable(),
+  dateFin: z.string().nullable(),
+  budgetPrevisionnel: z.number().nullable(),
+  informationsComplementaires: z.string().max(5000).nullable().optional(),
+  client: webhookClientSchema,
+  businessUnit: webhookBuSchema,
+  responsable: webhookResponsableSchema,
+})
+
+const webhookPayloadSchema = z.object({
+  event: z.enum(['project.created', 'project.updated']),
+  data: webhookDataSchema,
+})
+
+// ============================================
+// Constant-time string comparison
+// ============================================
+function safeCompare(a: string, b: string): boolean {
+  if (!a || !b) return false
+  try {
+    const bufA = Buffer.from(a, 'utf-8')
+    const bufB = Buffer.from(b, 'utf-8')
+    if (bufA.length !== bufB.length) return false
+    return timingSafeEqual(bufA, bufB)
+  } catch {
+    return false
+  }
+}
+
+// ============================================
 // POST /api/webhooks/navigator - Receive project sync from Navigator v1
 // ============================================
 export async function POST(req: NextRequest) {
   try {
-    // Validate webhook secret
+    // Validate webhook secret with timing-safe comparison
     const authHeader = req.headers.get('x-webhook-secret')
-    if (!WEBHOOK_SECRET || authHeader !== WEBHOOK_SECRET) {
+    if (!WEBHOOK_SECRET || !authHeader || !safeCompare(authHeader, WEBHOOK_SECRET)) {
       return apiError('Unauthorized', 401)
     }
 
-    const body = await req.json()
-    const { event, data } = body
+    // Parse and validate body with Zod
+    const rawBody = await req.json()
+    const parsed = webhookPayloadSchema.safeParse(rawBody)
+
+    if (!parsed.success) {
+      return apiError('Payload invalide', 400)
+    }
+
+    const { event, data } = parsed.data
 
     if (event === 'project.created' || event === 'project.updated') {
       return await handleProjectSync(data)
@@ -33,20 +97,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function handleProjectSync(data: {
-  id: string
-  nom: string
-  numero: string | null
-  type: string
-  statut: string
-  dateDebut: string | null
-  dateFin: string | null
-  budgetPrevisionnel: number | null
-  informationsComplementaires: string | null
-  client: { id: string; nom: string } | null
-  businessUnit: { id: string; nom: string; numero: string } | null
-  responsable: { id: string; prenom: string; nom: string } | null
-}) {
+async function handleProjectSync(data: z.infer<typeof webhookDataSchema>) {
   // Ensure temp user exists
   await prisma.user.upsert({
     where: { id: TEMP_USER_ID },
@@ -153,7 +204,7 @@ async function handleProjectSync(data: {
     data: {
       name: data.nom,
       description,
-      status: 'active', // Ready for quoting
+      status: 'active',
       clientId: kwotClientId,
       ownerId: TEMP_USER_ID,
       startDate: data.dateDebut ? new Date(data.dateDebut) : null,
@@ -174,8 +225,6 @@ async function handleProjectSync(data: {
     entityId: project.id,
     metadata: { source: 'navigator', navigatorProjectId: data.id, navigatorRef: data.numero },
   })
-
-  console.log(`[WEBHOOK NAVIGATOR] Projet synced: ${data.nom} (${data.numero}) -> KWOT ${project.id}`)
 
   return apiSuccess(project)
 }

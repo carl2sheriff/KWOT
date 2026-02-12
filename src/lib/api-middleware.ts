@@ -73,10 +73,14 @@ export function withApiMiddleware(
       console.error('API Error:', error)
 
       if (error instanceof Error) {
-        return apiError(error.message, 500)
+        // In production, hide internal error details from clients
+        const message = process.env.NODE_ENV === 'production'
+          ? 'Erreur interne du serveur'
+          : error.message
+        return apiError(message, 500)
       }
 
-      return apiError('Internal server error', 500)
+      return apiError('Erreur interne du serveur', 500)
     }
   }
 }
@@ -86,8 +90,10 @@ export function withApiMiddleware(
 // ============================================
 
 export function parsePagination(searchParams: URLSearchParams) {
-  const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+  const rawPage = parseInt(searchParams.get('page') || '1')
+  const rawLimit = parseInt(searchParams.get('limit') || '20')
+  const page = Math.max(1, isNaN(rawPage) ? 1 : rawPage)
+  const limit = Math.min(100, Math.max(1, isNaN(rawLimit) ? 20 : rawLimit))
   const skip = (page - 1) * limit
 
   return { page, limit, skip }
