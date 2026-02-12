@@ -204,7 +204,7 @@ async function handleProjectSync(data: z.infer<typeof webhookDataSchema>) {
     data: {
       name: data.nom,
       description,
-      status: 'active',
+      status: 'quote_waiting',
       clientId: kwotClientId,
       ownerId: TEMP_USER_ID,
       startDate: data.dateDebut ? new Date(data.dateDebut) : null,

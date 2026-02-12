@@ -88,6 +88,7 @@ export const STATUS_LABELS: Record<string, string> = {
   CONFIRMED: 'CONFIRME',
   RECEIVED: 'RECU',
   // General
+  quote_waiting: 'EN ATTENTE DEVIS',
   active: 'ACTIF',
   inactive: 'INACTIF',
   prospect: 'PROSPECT',
@@ -103,7 +104,7 @@ export const STATUS_LABELS: Record<string, string> = {
  */
 export function getStatusVariant(status: string): 'default' | 'success' | 'warning' | 'danger' | 'outline' | 'muted' {
   const successStatuses = ['APPROVED', 'PAID', 'COMPLETED', 'CONFIRMED', 'RECEIVED', 'APPLIED', 'active', 'done']
-  const warningStatuses = ['SENT', 'PENDING', 'PARTIALLY_PAID', 'in_progress', 'prospect']
+  const warningStatuses = ['SENT', 'PENDING', 'PARTIALLY_PAID', 'in_progress', 'prospect', 'quote_waiting']
   const dangerStatuses = ['REJECTED', 'OVERDUE', 'FAILED', 'CANCELLED', 'EXPIRED', 'cancelled']
   const mutedStatuses = ['DRAFT', 'draft', 'CREDITED', 'REFUNDED', 'inactive']
 
