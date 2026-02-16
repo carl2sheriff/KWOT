@@ -378,7 +378,15 @@ export default function ModifierDevisPage() {
               </div>
             </div>
 
-            <TotalsSummary totals={totals} />
+            <TotalsSummary 
+              subtotal={totals.subtotal}
+              discount={formData.discount}
+              discountType={formData.discountType}
+              taxRate={formData.taxRate}
+              taxAmount={totals.taxAmount}
+              total={totals.total}
+              taxBreakdown={totals.taxBreakdown}
+            />
           </div>
 
           {/* Notes */}
