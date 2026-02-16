@@ -325,7 +325,7 @@ export default function FacturesPage() {
                       <AlertCircle size={10} className="inline ml-1 text-danger" />
                     )}
                   </div>
-                  <div>
+                  <div className="flex items-center">
                     <StatusBadge status={overdue ? "OVERDUE" : inv.status} />
                   </div>
                   <div className="text-right text-sm font-bold tabular-nums text-zinc-100">

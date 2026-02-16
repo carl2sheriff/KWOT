@@ -161,7 +161,7 @@ export default function ClientsPage() {
                     <th className="text-left text-2xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">Societe</th>
                     <th className="text-left text-2xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">Email</th>
                     <th className="text-left text-2xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">Telephone</th>
-                    <th className="text-left text-2xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">Statut</th>
+                    <th className="text-left text-2xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3 align-middle">Statut</th>
                     <th className="text-center text-2xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">Projets</th>
                     <th className="text-center text-2xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">Devis</th>
                     <th className="text-center text-2xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">Factures</th>
@@ -187,8 +187,8 @@ export default function ClientsPage() {
                       <td className="px-4 py-3">
                         <span className="text-sm text-zinc-400">{client.phone || "—"}</span>
                       </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={client.status} />
+                      <td className="px-4 py-3 align-middle">
+                        <div className="flex items-center"><StatusBadge status={client.status} /></div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-sm tabular-nums text-zinc-300">{client._count.projects}</span>

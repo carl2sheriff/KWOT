@@ -215,7 +215,7 @@ export default function ProjetsPage() {
                       )}
                     </div>
                     <span className="text-sm text-zinc-400 truncate">{project.client.name}</span>
-                    <div><StatusBadge status={project.status} /></div>
+                    <div className="flex items-center justify-center"><StatusBadge status={project.status} /></div>
                     <span className="text-sm font-medium text-zinc-200 tabular-nums text-right">
                       {project.budget ? formatCurrency(project.budget) : <span className="text-zinc-600">--</span>}
                     </span>
@@ -240,7 +240,7 @@ export default function ProjetsPage() {
                         {project._count.tasks} tache{project._count.tasks > 1 ? "s" : ""}
                       </span>
                     </div>
-                    <div className="flex-shrink-0 mx-3"><StatusBadge status={project.status} /></div>
+                    <div className="flex items-center flex-shrink-0 mx-3"><StatusBadge status={project.status} /></div>
                     <ChevronRight size={16} className="text-zinc-700 group-hover:text-zinc-500 transition-colors flex-shrink-0" />
                   </div>
                 </button>

@@ -18,6 +18,7 @@ interface QuoteListItem {
   createdAt: string;
   client: { id: string; name: string; company: string | null };
   createdBy: { id: string; name: string };
+  project: { id: string; name: string; owner: { id: string; name: string } } | null;
   _count: { items: number };
 }
 
@@ -139,17 +140,30 @@ export default function DevisPage() {
                   onClick={() => router.push(`/devis/${quote.id}`)}
                   className="w-full bg-surface-raised border border-zinc-800/50 rounded-lg p-4 hover:border-zinc-700 transition-all duration-150 flex items-center justify-between text-left cursor-pointer group"
                 >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-semibold text-sm text-zinc-100">{quote.reference}</span>
+                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-zinc-100">{quote.reference}</span>
+                      {quote.createdBy && (
+                        <span className="text-2xs text-zinc-600">par {quote.createdBy.name}</span>
+                      )}
+                    </div>
                     <span className="text-xs text-zinc-500">
                       {quote.client.name}
                       {quote.client.company && <span className="ml-1">({quote.client.company})</span>}
                     </span>
-                    <span className="text-2xs text-zinc-600">
-                      {formatDate(quote.createdAt)} &middot; {quote._count.items} article{quote._count.items > 1 ? "s" : ""}
-                    </span>
+                    <div className="flex items-center gap-2 text-2xs text-zinc-600">
+                      <span>{formatDate(quote.createdAt)}</span>
+                      <span>·</span>
+                      <span>{quote._count.items} article{quote._count.items > 1 ? "s" : ""}</span>
+                      {quote.project?.owner && (
+                        <>
+                          <span>·</span>
+                          <span className="text-accent">{quote.project.owner.name}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-shrink-0 mx-4"><StatusBadge status={quote.status} /></div>
+                  <div className="flex-shrink-0 mx-4 flex items-center"><StatusBadge status={quote.status} /></div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-base tabular-nums text-zinc-100">{formatCurrency(quote.total)}</span>
                     <ChevronRight size={16} className="text-zinc-700 group-hover:text-zinc-500 transition-colors" />

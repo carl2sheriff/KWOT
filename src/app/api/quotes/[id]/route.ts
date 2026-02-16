@@ -228,6 +228,9 @@ export const PUT = withApiMiddleware(async (
   return apiSuccess(quote)
 })
 
+// PATCH /api/quotes/[id] - Update quote (alias for PUT)
+export const PATCH = PUT;
+
 // DELETE /api/quotes/[id] - Delete quote (only DRAFT)
 export const DELETE = withApiMiddleware(async (
   _req: NextRequest,

@@ -65,6 +65,13 @@ export const GET = withApiMiddleware(async (req: NextRequest) => {
         createdBy: {
           select: { id: true, name: true },
         },
+        project: {
+          select: { 
+            id: true, 
+            name: true,
+            owner: { select: { id: true, name: true } }
+          },
+        },
         _count: {
           select: { items: true },
         },

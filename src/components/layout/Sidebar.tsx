@@ -35,8 +35,9 @@ const navSections: NavSection[] = [
     title: "Navigation",
     items: [
       { label: "Tableau de bord", href: "/", icon: LayoutDashboard },
-      { label: "Clients", href: "/clients", icon: Users },
       { label: "Projets", href: "/projets", icon: FolderKanban },
+      { label: "Pipeline", href: "/pipeline", icon: FolderKanban },
+      { label: "Clients", href: "/clients", icon: Users },
     ],
   },
   {
@@ -83,10 +84,10 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 w-[240px] h-full bg-surface-raised border-r border-zinc-800/50 flex flex-col z-50">
       {/* Logo */}
       <div className="px-5 pt-7 pb-2">
-        <div className="flex items-baseline gap-1.5">
+        <Link href="/" className="flex items-baseline gap-1.5 hover:opacity-80 transition-opacity">
           <span className="font-bold text-xl text-zinc-100">KWOT</span>
           <span className="text-gradient font-bold text-xl">FINANCE</span>
-        </div>
+        </Link>
       </div>
 
       {/* Navigation */}
