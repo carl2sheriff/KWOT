@@ -9,6 +9,7 @@ interface LineItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  unitCost?: number;
   discount: number;
   taxRate: number;
   total: number;
