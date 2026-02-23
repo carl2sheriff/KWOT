@@ -85,8 +85,8 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-5 pt-7 pb-2">
         <Link href="/" className="flex items-baseline gap-1.5 hover:opacity-80 transition-opacity">
-          <span className="font-bold text-xl text-zinc-100">KWOT</span>
           <span className="text-gradient font-bold text-xl">FINANCE</span>
+          <span className="text-xs text-zinc-500 ml-1">by Sheriff Projects</span>
         </Link>
       </div>
 

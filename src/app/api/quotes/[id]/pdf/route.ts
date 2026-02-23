@@ -55,7 +55,7 @@ export async function GET(
     }
 
     const company = {
-      companyName: settings?.companyName || 'KWOT Finance',
+      companyName: settings?.companyName || 'FINANCE by Sheriff Projects',
       siret: settings?.siret,
       address: settings?.address,
       phone: settings?.phone,

@@ -20,6 +20,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Calendar, User, Euro, GripVertical } from "lucide-react";
 
 // Types
 export interface KanbanCard {
@@ -28,12 +29,14 @@ export interface KanbanCard {
   amount?: number;
   client?: string;
   date?: string;
+  status?: string;
 }
 
 export interface KanbanColumn {
   id: string;
   title: string;
   color: string;
+  bgColor: string;
   cards: KanbanCard[];
 }
 
@@ -43,22 +46,37 @@ interface KanbanBoardProps {
   onCardClick?: (card: KanbanCard) => void;
 }
 
-// Default columns (pipeline type)
+// Default columns with correct colors
 export const defaultColumns: KanbanColumn[] = [
-  { id: "new", title: "Nouveau", color: "bg-blue-500", cards: [] },
-  { id: "qualified", title: "Qualifié", color: "bg-yellow-500", cards: [] },
-  { id: "proposal", title: "Proposition", color: "bg-orange-500", cards: [] },
-  { id: "negotiation", title: "Négociation", color: "bg-purple-500", cards: [] },
-  { id: "won", title: "Gagné", color: "bg-emerald-500", cards: [] },
-  { id: "lost", title: "Perdu", color: "bg-red-500", cards: [] },
+  { id: "new", title: "Nouveau", color: "bg-blue-500", bgColor: "bg-blue-500/10", cards: [] },
+  { id: "qualified", title: "Qualifié", color: "bg-yellow-500", bgColor: "bg-yellow-500/10", cards: [] },
+  { id: "proposal", title: "Proposition", color: "bg-orange-500", bgColor: "bg-orange-500/10", cards: [] },
+  { id: "negotiation", title: "Négociation", color: "bg-purple-500", bgColor: "bg-purple-500/10", cards: [] },
+  { id: "won", title: "Gagné", color: "bg-emerald-500", bgColor: "bg-emerald-500/10", cards: [] },
+  { id: "lost", title: "Perdu", color: "bg-red-500", bgColor: "bg-red-500/10", cards: [] },
 ];
+
+// Status color mapping
+const getStatusColor = (columnId: string) => {
+  switch (columnId) {
+    case "new": return "border-l-blue-500";
+    case "qualified": return "border-l-yellow-500";
+    case "proposal": return "border-l-orange-500";
+    case "negotiation": return "border-l-purple-500";
+    case "won": return "border-l-emerald-500";
+    case "lost": return "border-l-red-500";
+    default: return "border-l-zinc-500";
+  }
+};
 
 // Sortable Card Component
 function SortableCard({ 
   card, 
+  columnId,
   onClick 
 }: { 
   card: KanbanCard; 
+  columnId: string;
   onClick?: () => void;
 }) {
   const {
@@ -83,26 +101,40 @@ function SortableCard({
       {...listeners}
       onClick={onClick}
       className={`
-        p-3 mb-2 bg-zinc-800/80 rounded-lg border border-zinc-700
-        cursor-pointer hover:border-emerald-500/50 hover:bg-zinc-800
+        p-4 mb-3 bg-white dark:bg-zinc-800 rounded-lg 
+        border border-zinc-200 dark:border-zinc-700
+        border-l-4 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-600
+        cursor-grab active:cursor-grabbing
         transition-all group
-        ${isDragging ? "shadow-lg shadow-emerald-500/20 border-emerald-500 opacity-50" : ""}
+        ${getStatusColor(columnId)}
+        ${isDragging ? "shadow-xl shadow-black/20 border-2 border-zinc-400 opacity-90 scale-105" : ""}
       `}
     >
-      <h4 className="text-sm font-medium text-zinc-100 mb-1">
-        {card.title}
-      </h4>
+      <div className="flex items-start justify-between mb-2">
+        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-2 flex-1">
+          {card.title}
+        </h4>
+        <GripVertical className="w-4 h-4 text-zinc-300 dark:text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2" />
+      </div>
+      
       {card.client && (
-        <p className="text-xs text-zinc-500 mb-2">{card.client}</p>
+        <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+          <User className="w-3 h-3" />
+          <span className="truncate">{card.client}</span>
+        </div>
       )}
-      <div className="flex items-center justify-between">
-        {card.amount !== undefined && (
-          <span className="text-sm font-semibold text-emerald-400">
+      
+      <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-700">
+        {card.amount !== undefined && card.amount > 0 && (
+          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
             {card.amount.toLocaleString("fr-FR")}€
           </span>
         )}
         {card.date && (
-          <span className="text-xs text-zinc-600">{card.date}</span>
+          <div className="flex items-center gap-1 text-xs text-zinc-400">
+            <Calendar className="w-3 h-3" />
+            <span>{card.date}</span>
+          </div>
         )}
       </div>
     </div>
@@ -121,20 +153,32 @@ function SortableColumn({
     id: column.id,
   });
 
+  // Calculate column total
+  const columnTotal = column.cards.reduce((sum, card) => sum + (card.amount || 0), 0);
+
   return (
     <div
       ref={setNodeRef}
-      className="flex-shrink-0 w-72 bg-zinc-900/50 rounded-xl border border-zinc-800 backdrop-blur-sm"
+      className="flex-shrink-0 w-80 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-800"
     >
       {/* Header */}
-      <div className="p-3 border-b border-zinc-800">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${column.color}`} />
-          <span className="font-medium text-zinc-100">{column.title}</span>
-          <span className="ml-auto text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
-            {column.cards.length}
-          </span>
+      <div className={`p-3 border-b-2 ${column.color.replace('bg-', 'border-')}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${column.color} animate-pulse`} />
+            <span className="font-semibold text-zinc-700 dark:text-zinc-200">{column.title}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-full">
+              {column.cards.length}
+            </span>
+          </div>
         </div>
+        {columnTotal > 0 && (
+          <div className="mt-2 text-xs text-zinc-500 font-medium">
+            {columnTotal.toLocaleString("fr-FR")}€
+          </div>
+        )}
       </div>
 
       {/* Cards */}
@@ -142,14 +186,20 @@ function SortableColumn({
         items={column.cards.map(c => c.id)} 
         strategy={horizontalListSortingStrategy}
       >
-        <div className="p-2 min-h-[200px]">
+        <div className="p-2 min-h-[300px] max-h-[calc(100vh-300px)] overflow-y-auto">
           {column.cards.map((card) => (
             <SortableCard 
               key={card.id} 
-              card={card} 
+              card={card}
+              columnId={column.id}
               onClick={() => onCardClick?.(card)}
             />
           ))}
+          {column.cards.length === 0 && (
+            <div className="flex items-center justify-center h-24 text-zinc-400 text-sm">
+              Aucun devis
+            </div>
+          )}
         </div>
       </SortableContext>
     </div>
@@ -271,6 +321,15 @@ export function KanbanBoard({ columns, onCardMove, onCardClick }: KanbanBoardPro
     }
   };
 
+  // Find active card for overlay
+  const activeCard = activeId 
+    ? items.flatMap(col => col.cards).find(c => c.id === activeId)
+    : null;
+
+  const activeColumn = activeCard
+    ? items.find(col => col.cards.some(c => c.id === activeId))
+    : null;
+
   return (
     <DndContext
       sensors={sensors}
@@ -294,9 +353,35 @@ export function KanbanBoard({ columns, onCardMove, onCardClick }: KanbanBoardPro
       </div>
       
       <DragOverlay>
-        {activeId ? (
-          <div className="p-3 bg-zinc-800 rounded-lg border border-emerald-500 shadow-lg shadow-emerald-500/20">
-            {/* Card preview */}
+        {activeCard && activeColumn ? (
+          <div className={`
+            p-4 bg-white dark:bg-zinc-800 rounded-lg 
+            border-2 border-zinc-400 shadow-2xl shadow-black/30
+            border-l-4 w-80
+            ${getStatusColor(activeColumn.id)}
+          `}>
+            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-2 mb-2">
+              {activeCard.title}
+            </h4>
+            {activeCard.client && (
+              <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                <User className="w-3 h-3" />
+                <span className="truncate">{activeCard.client}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-700">
+              {activeCard.amount !== undefined && activeCard.amount > 0 && (
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                  {activeCard.amount.toLocaleString("fr-FR")}€
+                </span>
+              )}
+              {activeCard.date && (
+                <div className="flex items-center gap-1 text-xs text-zinc-400">
+                  <Calendar className="w-3 h-3" />
+                  <span>{activeCard.date}</span>
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
       </DragOverlay>

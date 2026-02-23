@@ -16,7 +16,9 @@ import {
   Edit3,
   X,
   Check,
+  Upload,
 } from "lucide-react";
+import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -367,9 +369,16 @@ export default function CataloguePage() {
               Nouveau prestataire
             </Button>
           ) : (
-            <Button variant="accent" size="sm" icon={<Plus size={14} />} disabled>
-              Nouveau produit
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link href="/catalogue/import">
+                <Button variant="secondary" size="sm" icon={<Upload size={14} />}>
+                  Importer
+                </Button>
+              </Link>
+              <Button variant="accent" size="sm" icon={<Plus size={14} />} disabled>
+                Nouveau produit
+              </Button>
+            </div>
           )
         }
       />

@@ -42,14 +42,14 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gradient">KWOT</h1>
-          <p className="text-xs text-zinc-500 mt-1">Finance</p>
+          <h1 className="text-2xl font-bold text-gradient">FINANCE</h1>
+          <p className="text-xs text-zinc-500 mt-1">by Sheriff Projects</p>
         </div>
 
         {/* Login Card */}
         <div className="bg-surface-raised border border-zinc-800/50 rounded-xl p-6 shadow-card">
           <h2 className="text-lg font-semibold text-zinc-100 mb-1">Connexion</h2>
-          <p className="text-xs text-zinc-500 mb-6">Entrez vos identifiants pour acceder a KWOT Finance</p>
+          <p className="text-xs text-zinc-500 mb-6">Entrez vos identifiants pour acceder a FINANCE</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
@@ -115,7 +115,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-2xs text-zinc-600 mt-4">
-          KWOT Finance &copy; {new Date().getFullYear()}
+          FINANCE by Sheriff Projects &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>
