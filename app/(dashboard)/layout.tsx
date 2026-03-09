@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { CommandPalette } from "@/components/shared/command-palette";
 import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
@@ -33,6 +34,7 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }
