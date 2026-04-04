@@ -1,86 +1,65 @@
-# Kwotmon (KWOT Finance)
+# Finance CRM
 
-Gestion devis/factures/avoirs avec CRM — système financier complet pour Sheriff Projects.
+CRM financier interne — gestion pipeline commercial, deals, contacts, projets, factures.
 
 ## Architecture
 
 ```
-src/
-  app/
-    (dashboard)/         → Pages admin (devis, factures, clients, projets, fournisseurs, produits)
-    api/
-      clients/           → CRUD clients
-      quotes/            → Gestion devis (versioning, milestones)
-      invoices/          → Facturation
-      payments/          → Suivi paiements
-      suppliers/         → Fournisseurs
-      purchase-orders/   → Bons de commande
-      business-units/    → Business units
-      products/          → Catalogue produits
-      activecollab/      → Sync ActiveCollab
-      reporting/         → Reporting CA
-      settings/          → Paramètres société
-    login/               → Auth
-    extranet/            → Portail fournisseurs
-  components/
-    ui/                  → shadcn/ui (Radix)
-    financial/           → Composants métier finance
-  hooks/                 → Custom React hooks
-  lib/                   → Utilitaires
+app/
+  (auth)/login/          → Page de connexion
+  (dashboard)/
+    deals/               → Pipeline commercial (Kanban)
+    invoices/            → Gestion factures
+    projects/            → Suivi projets
+    contacts/            → Contacts clients
+    companies/           → Entreprises clientes
+    settings/            → Paramètres
+  api/                   → Endpoints REST (deals, invoices, projects, contacts, companies, activities, search, settings)
+components/
+  ui/                    → Composants shadcn/ui
+  layout/                → Layout components
+  charts/                → Graphiques Recharts
+lib/
+  db.ts                  → Client Prisma
+  stores/                → Zustand stores
+  validations/           → Schémas Zod
 prisma/
-  schema.prisma          → 25+ tables (devis, factures, avoirs, PO, paiements, time entries...)
+  schema.prisma          → Schéma BDD
 ```
 
 ## Stack
 
-- **Framework** : Next.js 15 + TypeScript
-- **DB** : PostgreSQL (Neon) via Prisma 6
+- **Framework** : Next.js 14 + TypeScript
+- **DB** : PostgreSQL (Neon) via Prisma 7
 - **Auth** : NextAuth v5 (email/password)
-- **Styling** : Tailwind CSS 3 + shadcn/ui
+- **UI** : Tailwind CSS 3 + shadcn/ui (Radix)
 - **State** : Zustand
-- **PDF** : jspdf + jspdf-autotable
-- **Email** : Resend
-- **Tests** : Vitest
-- **Error tracking** : Sentry
+- **Charts** : Recharts
 - **Deploy** : Vercel
-- **Port dev** : 3002
+- **Port dev** : 3008
 
 ## Variables d'environnement
 
 ```
 DATABASE_URL=postgresql://...
 AUTH_SECRET=...
-NEXT_PUBLIC_APP_URL=http://localhost:3002
-NAVIGATOR_WEBHOOK_SECRET=...    # Sync Navigator v1
-RESEND_API_KEY=re_...           # Optionnel
-SENTRY_DSN=https://...          # Optionnel
+NEXTAUTH_URL=http://localhost:3008
 ```
 
-## Documents financiers
+## Modèles DB (Prisma)
 
-- **Devis** : draft → sent → approved → rejected → expired → cancelled (avec versioning)
-- **Factures** : draft → sent → paid → partially_paid → overdue → cancelled → credited
-- **Avoirs** : retours/ajustements
-- **Bons de commande** : commandes fournisseurs
-- **Paiements** : virement, chèque, CB, espèces
-
-## Intégrations externes
-
-- **ActiveCollab** : sync time entries, expenses, projets (webhooks + API)
-- **Navigator v1** : sync clients/projets via webhook
-- **Resend** : envoi emails (devis, factures)
-- **Sentry** : monitoring erreurs
+- **Profile** — Users (admin/member/viewer)
+- **Company** — Organisations clientes
+- **Contact** — Contacts individuels
+- **Deal** — Opportunités (lead → qualified → proposal → negotiation → won/lost)
+- **Project** — Projets liés aux deals
+- **Invoice** — Factures
+- **Activity** — Historique (calls, emails, meetings, tasks)
 
 ## Conventions
 
-- Prisma (pas Drizzle) — attention à ne pas confondre avec les autres projets Sheriff
-- CSV import produits : `name;description;price;category;unit` (délimiteur point-virgule)
-- ❌ Ne PAS utiliser middleware.ts dans Next.js 16 → utiliser proxy config
-- ❌ Ne PAS utiliser sentry.client.config.ts (deprecated) → utiliser instrumentation-client.ts
-- Components : PascalCase (`QuoteCard.tsx`)
-- Utils/functions : camelCase
-- Database : snake_case
-- Mobile-first obligatoire
-- Zero crash tolerance en production
-
-*Last updated: 2026-04-04*
+- TypeScript strict
+- Prisma (pas Drizzle) — attention à ne pas confondre avec les autres projets
+- shadcn/ui pour tous les composants
+- Pipeline Kanban pour les deals
+- Port 3008
